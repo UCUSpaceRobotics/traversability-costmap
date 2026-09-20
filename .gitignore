@@ -1,0 +1,74 @@
+# =========================
+# 1. Project-Specific (Data & Models)
+# =========================
+
+# Ignore TensorBoard/WandB logs if you use them
+runs/
+wandb/
+
+# =========================
+# 2. ROS 2 & Colcon
+# =========================
+build/
+install/
+log/
+.colcon/
+*.bag
+*.db3
+*.db3-shm
+*.db3-wal
+
+# =========================
+# 3. Python & Virtual Environments
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+# Type hints and testing
+.mypy_cache/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# 4. C++ (For ROS 2 Nav2 Plugin)
+# =========================
+*.o
+*.obj
+*.a
+*.lib
+*.dll
+*.dylib
+*.out
+*.app
+
+# =========================
+# 5. OS & IDEs
+# =========================
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
