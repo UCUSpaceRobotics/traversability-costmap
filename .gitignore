@@ -1,13 +1,16 @@
 # =========================
-# 1. Project-Specific (Data & Models)
+# Data & Models
 # =========================
 
 # Ignore TensorBoard/WandB logs if you use them
 runs/
 wandb/
 
+# Big ROS2 bags
+data/bags/**/*.mcap
+
 # =========================
-# 2. ROS 2 & Colcon
+# ROS 2 & Colcon
 # =========================
 build/
 install/
@@ -19,7 +22,7 @@ log/
 *.db3-wal
 
 # =========================
-# 3. Python & Virtual Environments
+# Python & Virtual Environments
 # =========================
 __pycache__/
 *.py[cod]
@@ -43,7 +46,7 @@ ENV/
 htmlcov/
 
 # =========================
-# 4. C++ (For ROS 2 Nav2 Plugin)
+# C++ (For ROS 2 Nav2 Plugin)
 # =========================
 *.o
 *.obj
@@ -55,7 +58,7 @@ htmlcov/
 *.app
 
 # =========================
-# 5. OS & IDEs
+# OS & IDEs
 # =========================
 # macOS
 .DS_Store
@@ -72,3 +75,8 @@ Desktop.ini
 .idea/
 *.swp
 *.swo
+
+# =========================
+# AI Context
+# =========================
+ai-context/
