@@ -7,7 +7,7 @@ runs/
 wandb/
 
 # Big ROS2 bags
-data/bags/**/*.mcap
+data/raw/**/*.mcap
 
 # =========================
 # ROS 2 & Colcon

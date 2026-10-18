@@ -1,0 +1,24 @@
+/**/zed_node:
+  ros__parameters:
+    general:
+      grab_resolution: 'HD720' # capture res; VIO quality OK, less Jetson load
+      grab_frame_rate: 30 # keep high: VIO/IMU fusion need it
+      pub_resolution: 'CUSTOM' # required, otherwise pub_downscale_factor is ignored
+      pub_downscale_factor: 2.0 # divisor -> 640x360 published images/depth
+      pub_frame_rate: 7.0 # image+depth publish rate; VIO still runs at grab rate
+
+    sensors:
+      sensors_pub_rate: 100.0 # IMU rate for vibration labels (200 if needed)
+
+    depth:
+      max_depth: 8.0 # nav uses 15; farther pixels -> invalid, compress to ~nothing in compressedDepth
+      publish_depth_map: true # recorded as compressedDepth
+      publish_point_cloud: false # rebuilt offline from depth + camera_info
+
+    pos_tracking:
+      two_d_mode: true # set false to get along-slope velocity on hills
+
+    # JPEG quality of the compressed RGB topic (compressed_image_transport, not a ZED param).
+    # Name = '.' + RGB topic relative to the node namespace (/zed2i), '/' -> '.'; the launch
+    # remaps don't currently match, so the topic is /zed2i/zed_node/rgb/color/rect/image.
+    .zed_node.rgb.color.rect.image.jpeg_quality: 70 # JPEG quality for recorded RGB
