@@ -1,8 +1,8 @@
 bag,session,ride_type,terrain,max_speed_ms,duration_s,size_mb,split,url,notes
-test_20261017_162047,2026-10-17_ucu_cinema,test,floor,,29,31,exclude,,setup check
-flat_05ms_20261017_162915,2026-10-17_ucu_cinema,flat,floor;bumps;stones,0.5,178,196,train,,
-rockfield_05ms_20261017_163716,2026-10-17_ucu_cinema,rockfield,floor;bumps;stony_area,0.5,299,395,train,,
-singlestones_05ms_20261017_164442,2026-10-17_ucu_cinema,singlestones,floor;bumps;stones,0.5,239,296,train,,
-mixed_05ms_20261017_164938,2026-10-17_ucu_cinema,mixed,floor;bumps;stones;stony_area,0.5,239,316,val,,
-rockfield_03ms_20261017_170424,2026-10-17_ucu_cinema,rockfield,floor;bumps;stony_area,0.3,199,272,train,,
-rockfield_08ms_20261017_171002,2026-10-17_ucu_cinema,rockfield,floor;bumps;stony_area,0.8,199,250,train,,
+test_20261017_162047,2026-10-17_ucu-cinema,test,floor,,29,31,exclude,,setup check
+flat_05ms_20261017_162915,2026-10-17_ucu-cinema,flat,floor;bumps;stones,0.5,178,196,train,,
+rockfield_05ms_20261017_163716,2026-10-17_ucu-cinema,rockfield,floor;bumps;stony_area,0.5,299,395,train,,
+singlestones_05ms_20261017_164442,2026-10-17_ucu-cinema,singlestones,floor;bumps;stones,0.5,239,296,train,,
+mixed_05ms_20261017_164938,2026-10-17_ucu-cinema,mixed,floor;bumps;stones;stony_area,0.5,239,316,val,,
+rockfield_03ms_20261017_170424,2026-10-17_ucu-cinema,rockfield,floor;bumps;stony_area,0.3,199,272,train,,
+rockfield_08ms_20261017_171002,2026-10-17_ucu-cinema,rockfield,floor;bumps;stony_area,0.8,199,250,train,,
