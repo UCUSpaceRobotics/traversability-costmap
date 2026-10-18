@@ -6,14 +6,40 @@ Recordings are grouped into **sessions**: one session is one recording day at on
 
 Dataset on Hugging Face: [erc-samples/traversability-costmap](https://huggingface.co/datasets/erc-samples/traversability-costmap)
 
-## Download
+
+## Usage
+
+Run all commands from the root of the repository.
+
+### Prerequisites
+
+Create virtual environment:
+```bash
+python3 -m venv .venv
+```
+
+Source it:
+```bash
+source .venv/bin/activate
+```
+
+Install requirements:
+```bash
+pip install -r requirements.txt
+```
+
+Login into Hugging Face:
+```bash
+hf auth login
+```
+
+Paste your token which you can generate by going to [https://huggingface.co/](https://huggingface.co/), clicking on your profile icon at the top right corner -> **Access Tokens** -> **Create new token**. For downloading dataset reading token is enough.
+
+### Download
 
 Bags are not stored in git. Use [scripts/download_data.py](../scripts/download_data.py) to fetch them into `data/raw/`:
 
 ```bash
-pip install huggingface_hub
-hf auth login                      # a read token is enough
-
 python scripts/download_data.py                                  # all train + val bags
 python scripts/download_data.py --split val                      # only validation bags
 python scripts/download_data.py --session 2026-10-17_ucu-cinema  # one session
@@ -24,6 +50,29 @@ python scripts/download_data.py --dry-run                        # list only, no
 ```
 
 Filters can be repeated and combined. Bags with `split=exclude`, such as `test` rides, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped. Downloaded files are checked against the sha256 in the manifest (turn this off with `--no-verify`).
+
+## Bag reports
+
+[scripts/generate_bags_report.py](../scripts/generate_bags_report.py) creates an HTML report for each downloaded bag. Use the reports to check a bag before you train on it. Each report shows:
+
+- general info and the bag's manifest row
+- integrity checks: expected topics, gaps, latency
+- per-topic rates
+- speed and paths from each odometry source
+- IMU, vibration and wheel plots
+- RGB and depth previews
+
+```bash
+pip install rosbags numpy matplotlib opencv-python-headless pyyaml
+
+python scripts/generate_bags_report.py                                  # all bags in data/raw/
+python scripts/generate_bags_report.py --session 2026-10-17_ucu-cinema  # one session
+python scripts/generate_bags_report.py --bag flat_05ms_20261017_162915  # one bag (name or path)
+python scripts/generate_bags_report.py --skip-existing --jobs 4         # only new bags, in parallel
+python scripts/generate_bags_report.py --index-only                     # only rebuild the index pages
+```
+
+Reports are written to `reports/`.
 
 ## Directory structure
 

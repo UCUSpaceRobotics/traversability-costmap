@@ -9,11 +9,11 @@ Self-supervised terrain traversability prediction and ROS 2 Nav2 costmap generat
 
 ## Team
 
-| Name | GitHub | Role |
-|---|---|---|
+| Name | GitHub |
+|---|---|
 | Bohdan Zasymovych | [@BohdanZasymovych](https://github.com/BohdanZasymovych) |
-| <Team Member 2> | [@username](https://github.com/username) |
-| <Team Member 3> | [@username](https://github.com/username) |
+| Mykyta Yagoda | [@yagodanr](https://github.com/yagodanr) |
+| Olena Yakovenko | [@OlenaYakovenk0](https://github.com/OlenaYakovenk0) |
 
 
 
@@ -25,6 +25,17 @@ Autonomous off-road navigation typically relies on geometric occupancy grids, wh
 
 ## Data
 
+The dataset is a set of ROS 2 bags (`.mcap`) recorded by teleoperating the Indomitus rover over different terrain: flat ground with bumps, single stones and a stony area. The rides were driven at several speeds. Each bag contains:
+
+- ZED 2i RGB and depth images
+- IMU readings
+- odometry from the ZED, the wheels and the fused estimate
+- wheel joint states
+- velocity commands
+
+The camera images are the model input. The IMU and odometry provide the self-supervised labels (slip and vibration).
+
+The bags are hosted on Hugging Face at [erc-samples/traversability-costmap](https://huggingface.co/datasets/erc-samples/traversability-costmap). [data/manifest.csv](data/manifest.csv) lists each bag and its train/val split. See [data/README.md](data/README.md) for how to download the data, the directory layout, ride types, bag naming, and how to generate per-bag quality reports.
 
 
 ## Approach
@@ -59,9 +70,9 @@ Autonomous off-road navigation typically relies on geometric occupancy grids, wh
 
 | Member | Responsible for |
 | --- | --- |
-| Bohdan Zasymovych | `<specific directories/files, specific tasks>` |
-| <Name 2> | `<specific directories/files, specific tasks>` |
-| <Name 3> | `<specific directories/files, specific tasks>` |
+| Bohdan Zasymovych | Dataset gathering |
+| Mykyta Yagoda | `<specific directories/files, specific tasks>` |
+| Olena Yakovenko | `<specific directories/files, specific tasks>` |
 
 All members agree with the above distribution.
 
