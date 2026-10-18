@@ -9,6 +9,9 @@ wandb/
 # Big ROS2 bags
 data/raw/**/*.mcap
 
+# Hugging Face download cache (created by `hf download --local-dir`)
+.cache/
+
 # =========================
 # ROS 2 & Colcon
 # =========================
