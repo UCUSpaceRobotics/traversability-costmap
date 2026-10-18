@@ -12,6 +12,8 @@ data/raw/**/*.mcap
 # Hugging Face download cache (created by `hf download --local-dir`)
 .cache/
 
+reports/
+
 # =========================
 # ROS 2 & Colcon
 # =========================
