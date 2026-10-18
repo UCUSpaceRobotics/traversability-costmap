@@ -19,11 +19,11 @@ Each bag report contains:
     - RGB + depth previews at several moments of the ride
 
 Usage examples (run from anywhere inside the repo):
-    python scripts/bag_report.py                                        # all bags
-    python scripts/bag_report.py --session 2026-10-17_ucu-cinema         # one session
-    python scripts/bag_report.py --bag flat_05ms_20261017_162915         # one bag (by name)
-    python scripts/bag_report.py --bag data/raw/<session>/<bag>          # one bag (by path)
-    python scripts/bag_report.py --skip-existing --jobs 4                # only new bags, in parallel
+    python scripts/generate_bags_report.py                                        # all bags
+    python scripts/generate_bags_report.py --session 2026-10-17_ucu-cinema         # one session
+    python scripts/generate_bags_report.py --bag flat_05ms_20261017_162915         # one bag (by name)
+    python scripts/generate_bags_report.py --bag data/raw/<session>/<bag>          # one bag (by path)
+    python scripts/generate_bags_report.py --skip-existing --jobs 4                # only new bags, in parallel
 
 Requires: pip install rosbags numpy matplotlib opencv-python-headless pyyaml
 """
