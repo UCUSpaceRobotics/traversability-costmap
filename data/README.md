@@ -43,7 +43,7 @@ Bags are not stored in git. Use [scripts/download_data.py](../scripts/download_d
 python scripts/download_data.py                                  # all train + val bags
 python scripts/download_data.py --split val                      # only validation bags
 python scripts/download_data.py --session 2026-10-17_ucu-cinema  # one session
-python scripts/download_data.py --ride-type rockfield            # one ride type
+python scripts/download_data.py --ride-type mixed                # one ride type
 python scripts/download_data.py --bag flat_05ms_20261017_162915  # one bag
 python scripts/download_data.py --revision v0.1                  # pinned dataset version
 python scripts/download_data.py --dry-run                        # list only, no download
@@ -100,25 +100,25 @@ The ride type is the first part of the bag name.
 | `test`         | Setup check. Never used for training or validation. |
 | `flat`         | Mostly flat surface with small bumps and stones. |
 | `singlestones` | Flat surface. The rover deliberately drives over and next to single stones. |
-| `rockfield`    | Passes through the stony area from different angles (~40% stony, ~60% flat with bumps). |
-| `mixed`        | All terrain types (~30% stony, ~70% flat with bumps and single stones). |
+| `mixed`        | All terrain types: flat with bumps, single stones and passes through the stony area from different angles. |
 
 ## Bag naming
 
 ```
-<ride_type>[_<index>]_<speed>_<YYYYMMDD>_<HHMMSS>
+<ride_type>_<speed>[_<index>]_<YYYYMMDD>_<HHMMSS>
 ```
 
 | Part          | Required | Meaning |
 |---------------|----------|---------|
 | `ride_type`   | yes      | One of the ride types above. |
-| `index`       | no       | Number of a repeated recording with the same ride type and speed (`_2`, `_3`, …). |
 | `speed`       | yes*     | Maximum speed in tenths of m/s, followed by `ms`: `03ms` = 0.3 m/s, `05ms` = 0.5 m/s, `08ms` = 0.8 m/s. This is the speed with the joystick fully forward. The actual speed may be lower. |
+| `index`       | no       | Number of a repeated recording with the same ride type and speed in one session, starting from 1 (`_1`, `_2`, …). Used only when there is more than one such recording. |
 | `YYYYMMDD`    | yes      | Recording date. |
-| `HHMMSS`      | yes      | Recording start time (local). |
+| `HHMMSS`      | yes      | Recording start time (UTC+0). |
 
 \* `test` bags have no speed, e.g. `test_20261017_162047`.
 
 Examples:
 - `flat_05ms_20261017_162915`: flat ride at max 0.5 m/s, recorded 2026-10-17 at 16:29:15
-- `rockfield_08ms_20261017_171002`: rockfield ride at max 0.8 m/s
+- `mixed_08ms_20261017_171002`: mixed ride at max 0.8 m/s
+- `mixed_05ms_2_20261019_160254`: second mixed ride at max 0.5 m/s in the 2026-10-19 session
