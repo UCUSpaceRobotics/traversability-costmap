@@ -4,6 +4,3 @@ environment: indoor
 lighting: artificial, constant
 surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
 zed_config: zed2i_record.yaml
-notes: >
-  test_* bag is a setup check, not for training or validation.
-  Speed in bag name is the max speed (joystick fully forward); actual speed was sometimes lower due to manual slowing.
