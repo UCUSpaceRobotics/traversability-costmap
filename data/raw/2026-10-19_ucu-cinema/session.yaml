@@ -1,0 +1,6 @@
+date: 2026-10-19
+location: UCU Cinema
+environment: indoor
+lighting: artificial, constant
+surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
+zed_config: zed2i_record.yaml
