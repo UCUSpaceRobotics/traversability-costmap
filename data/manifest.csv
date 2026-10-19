@@ -1,8 +1,17 @@
 bag,session,ride_type,terrain,max_speed_ms,duration_s,size_mb,split,notes
 test_20261017_162047,2026-10-17_ucu-cinema,test,ground,,29,31,exclude,setup check
 flat_05ms_20261017_162915,2026-10-17_ucu-cinema,flat,ground;bumps;stones,0.5,178,196,train,
-rockfield_05ms_20261017_163716,2026-10-17_ucu-cinema,rockfield,ground;bumps;stony_area,0.5,299,395,train,
+mixed_05ms_1_20261017_163716,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.5,299,395,train,
 singlestones_05ms_20261017_164442,2026-10-17_ucu-cinema,singlestones,ground;bumps;stones,0.5,239,296,train,
-mixed_05ms_20261017_164938,2026-10-17_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,239,316,val,
-rockfield_03ms_20261017_170424,2026-10-17_ucu-cinema,rockfield,ground;bumps;stony_area,0.3,199,272,train,
-rockfield_08ms_20261017_171002,2026-10-17_ucu-cinema,rockfield,ground;bumps;stony_area,0.8,199,250,train,
+mixed_05ms_2_20261017_164938,2026-10-17_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,239,316,train,
+mixed_03ms_20261017_170424,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.3,199,272,train,
+mixed_08ms_20261017_171002,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.8,199,250,train,
+test_20261019_143330,2026-10-19_ucu-cinema,test,ground,,219,373,exclude,setup check
+flat_05ms_1_20261019_152249,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,298,510,train,
+mixed_05ms_1_20261019_153122,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,364,664,train,
+mixed_03ms_20261019_154946,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.3,263,509,train,
+mixed_05ms_2_20261019_160254,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,306,543,train,
+flat_08ms_1_20261019_162037,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,273,460,train,
+flat_05ms_2_20261019_170000,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,349,651,train,
+flat_08ms_2_20261019_170619,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,239,433,train,
+mixed_05ms_3_20261019_171040,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,400,763,train,
