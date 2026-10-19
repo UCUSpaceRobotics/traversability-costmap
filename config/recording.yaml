@@ -1,0 +1,47 @@
+# Settings for recording dataset bags on the rover.
+# Used by scripts/record_bag.sh (laptop) and scripts/rover/bag_recorder.py (inside the rover container).
+
+# Directory the bags are written to, as seen inside the container. It must be a volume mounted from
+# the Jetson, otherwise the bags are lost when the container is re-created (e.g. by a deploy).
+output_dir: /opt/ws/bags
+
+# Bag naming, see data/README.md:  <ride_type>_<speed>ms[_<index>]_<YYYYMMDD>_<HHMMSS>  (UTC)
+naming:
+  ride_types: [test, flat, singlestones, mixed]
+  ride_types_without_speed: [test]     # these get no speed part, e.g. test_20261017_162047
+
+# Passed to `ros2 bag record`.
+record:
+  storage: mcap
+  storage_preset_profile: zstd_fast
+  max_bag_duration: 0        # split the bag into files of this many seconds; 0 = no split
+  extra_args: []             # any other `ros2 bag record` arguments, e.g. [--max-cache-size, "209715200"]
+
+checks:
+  discovery_timeout: 5.0       # s to wait until every topic has a publisher
+  rate_window: 5.0             # s to measure message rates before recording
+  rate_tolerance: 0.3          # allowed relative deviation from the expected rate (default for every topic)
+  monitor_interval: 10.0       # s between checks during recording; 0 = no monitoring
+  count_tolerance: 0.1         # allowed relative deviation of message count from rate * duration in the summary
+  min_free_gb: 5.0             # do not start (and warn during recording) below this free disk space
+
+# Topics recorded into every bag.
+#   type       message type; checked against the ROS graph
+#   rate       expected rate in Hz; omit for event-driven topics (only existence and publishers are checked)
+#   tolerance  allowed relative deviation for this topic, overrides both checks.rate_tolerance and
+#              checks.count_tolerance (for topics whose rate varies)
+#   required   false = problems are warnings and do not block the recording (default true)
+#   latched    transient-local topic with a single message, e.g. /tf_static (default false)
+topics:
+  /rover/zed2i/rgb/image_rect_color/compressed:        {type: sensor_msgs/msg/CompressedImage, rate: 7}
+  /rover/zed2i/rgb/camera_info:                        {type: sensor_msgs/msg/CameraInfo, rate: 7}
+  /rover/zed2i/depth/depth_registered/compressedDepth: {type: sensor_msgs/msg/CompressedImage, rate: 7}
+  /rover/zed2i/depth/camera_info:                      {type: sensor_msgs/msg/CameraInfo, rate: 7}
+  /rover/zed2i/imu/data:                               {type: sensor_msgs/msg/Imu, rate: 100}
+  /rover/zed2i/odom:                                   {type: nav_msgs/msg/Odometry, rate: 20, tolerance: 0.5}
+  /rover/wheels/odom:                                  {type: nav_msgs/msg/Odometry, rate: 100}
+  /rover/odom:                                         {type: nav_msgs/msg/Odometry, rate: 20}
+  /rover/joint_states:                                 {type: sensor_msgs/msg/JointState, rate: 100}
+  /rover/cmd_vel:                                      {type: geometry_msgs/msg/Twist, rate: 50, required: false}
+  /tf:                                                 {type: tf2_msgs/msg/TFMessage, rate: 220, tolerance: 0.15}
+  /tf_static:                                          {type: tf2_msgs/msg/TFMessage, latched: true}

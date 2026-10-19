@@ -74,6 +74,31 @@ python scripts/generate_bags_report.py --index-only                     # only r
 
 Reports are written to `reports/`.
 
+## Recording
+
+Use [scripts/record_bag.sh](../scripts/record_bag.sh) on the laptop to record new bags on the rover. The script connects to the rover over the hotspot (`--eth` for cable, `--no-wifi` if already connected), and runs [scripts/rover/bag_recorder.py](../scripts/rover/bag_recorder.py) inside the `rover_prod` container. The rover stack must be running. Then the script:
+
+1. checks every topic: it exists, has the right type, has publishers and its rate is close to the expected one;
+2. records until Ctrl+C or `--duration`, and checks the topics again every few seconds, with a warning for each problem;
+3. prints a summary that compares each topic's message count with rate × duration;
+4. with `--copy-to`, copies the bag to the laptop.
+
+The bag name follows the [naming convention](#bag-naming). The topics, expected rates, tolerances and recording settings are in [config/recording.yaml](../config/recording.yaml).
+
+```bash
+scripts/record_bag.sh check                                                  # pre-flight checks only
+scripts/record_bag.sh record --ride-type mixed --speed 0.5                   # until Ctrl+C
+scripts/record_bag.sh record --ride-type flat --speed 0.8 --index 2 --duration 5m \
+    --copy-to data/raw/2026-10-20_ucu-cinema                                 # stop after 5 min, copy to the laptop
+scripts/record_bag.sh list                                                   # bags on the rover
+scripts/record_bag.sh summary mixed_05ms_20261020_101500                     # summary of a bag on the rover
+scripts/record_bag.sh fetch --copy-to data/raw/2026-10-20_ucu-cinema         # copy the newest bag
+scripts/record_bag.sh stop                                                   # stop a recording left running after an ssh drop
+scripts/record_bag.sh --help                                                 # all options
+```
+
+If the ssh connection drops during a recording, reconnect and run `scripts/record_bag.sh stop`, or wait for `--duration` to end. Either way the bag is finalised. Then check it with `summary`.
+
 ## Directory structure
 
 ```
