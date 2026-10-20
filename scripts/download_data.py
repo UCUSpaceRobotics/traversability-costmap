@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Download rosbags of the traversability dataset from the Hugging Face Hub.
 
-Bags are selected from data/manifest.csv and downloaded into data/raw/,
-keeping the layout <session>/<bag>/ used in the Hugging Face dataset repo.
+Bags are selected from data/manifest.csv and downloaded into data/raw/.
+The Hugging Face dataset repo has the same layout as data/: raw/<session>/<bag>/.
+Only .mcap files are downloaded: metadata.yaml and session.yaml are tracked in git,
+and downloading them would overwrite local edits with the Hub copies.
 Files that are already downloaded are skipped.
 
 Usage examples (run from anywhere inside the repo):
@@ -31,7 +33,8 @@ DEFAULT_REVISION = "main"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 MANIFEST = REPO_ROOT / "data" / "manifest.csv"
-RAW_DIR = REPO_ROOT / "data" / "raw"
+DATA_DIR = REPO_ROOT / "data"
+RAW_DIR = DATA_DIR / "raw"
 
 
 def parse_args() -> argparse.Namespace:
@@ -111,14 +114,13 @@ def main() -> None:
     if args.dry_run:
         return
 
-    patterns = [f"{r['session']}/{r['bag']}/*" for r in rows]
-    patterns += sorted({f"{r['session']}/session.yaml" for r in rows})
+    patterns = [f"raw/{r['session']}/{r['bag']}/*.mcap" for r in rows]
 
     snapshot_download(
         repo_id=HF_REPO_ID,
         repo_type="dataset",
         revision=args.revision,
-        local_dir=RAW_DIR,
+        local_dir=DATA_DIR,
         allow_patterns=patterns,
     )
     print(f"Downloaded to {RAW_DIR}")
