@@ -6,6 +6,20 @@ Recordings are grouped into **sessions**: one session is one recording day at on
 
 Dataset on Hugging Face: [erc-samples/traversability-costmap](https://huggingface.co/datasets/erc-samples/traversability-costmap)
 
+## Contents
+
+- [Usage](#usage)
+  - [Prerequisites](#prerequisites)
+  - [Download](#download)
+    - [Without the script](#without-the-script)
+- [Bag reports](#bag-reports)
+- [Recording](#recording)
+- [Adding a session](#adding-a-session)
+- [Directory structure](#directory-structure)
+  - [Hugging Face repo](#hugging-face-repo)
+- [Ride types](#ride-types)
+- [Bag naming](#bag-naming)
+
 
 ## Usage
 
@@ -49,7 +63,17 @@ python scripts/download_data.py --revision v0.1                  # pinned datase
 python scripts/download_data.py --dry-run                        # list only, no download
 ```
 
-Filters can be repeated and combined. Bags with `split=exclude`, such as `test` rides, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped. Downloaded files are checked against the sha256 in the manifest (turn this off with `--no-verify`).
+Filters can be repeated and combined. Bags with `split=exclude`, such as `test` rides, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped.
+
+#### Without the script
+
+Use the `hf` CLI directly. The Hub repo has the same layout as `data/` (see [Hugging Face repo](#hugging-face-repo)), so download into `data/` with `--include "*.mcap"`. Without that filter, the Hub copies of the YAML files overwrite the newer ones from git.
+
+```bash
+hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "*.mcap"                                     # all bags
+hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*.mcap"           # one session
+hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "raw/*/flat_05ms_1_20261019_152249/*.mcap"   # one bag
+```
 
 ## Bag reports
 
@@ -63,8 +87,6 @@ Filters can be repeated and combined. Bags with `split=exclude`, such as `test` 
 - RGB and depth previews
 
 ```bash
-pip install rosbags numpy matplotlib opencv-python-headless pyyaml
-
 python scripts/generate_bags_report.py                                  # all bags in data/raw/
 python scripts/generate_bags_report.py --session 2026-10-17_ucu-cinema  # one session
 python scripts/generate_bags_report.py --bag flat_05ms_20261017_162915  # one bag (name or path)
@@ -72,7 +94,7 @@ python scripts/generate_bags_report.py --skip-existing --jobs 4         # only n
 python scripts/generate_bags_report.py --index-only                     # only rebuild the index pages
 ```
 
-Reports are written to `reports/`.
+Reports are written to `reports/` which are ignored by the `.gitignore`.
 
 ## Recording
 
@@ -99,11 +121,77 @@ scripts/record_bag.sh --help                                                 # a
 
 If the ssh connection drops during a recording, reconnect and run `scripts/record_bag.sh stop`, or wait for `--duration` to end. Either way the bag is finalised. Then check it with `summary`.
 
+## Adding a session
+
+You need a Hugging Face token with write access to `erc-samples` (`hf auth login`).
+
+**1. Create the session folder.** Name it `<YYYY-MM-DD>_<location>`, record the bags into it with `--copy-to data/raw/<session>`, and add the two YAML files:
+
+```
+data/raw/2026-10-20_ucu-cinema/
+├── session.yaml
+├── zed2i_record.yaml             # ZED 2i config the rover used
+└── <bag>/                        # one folder per bag, as copied by record_bag.sh
+    ├── metadata.yaml
+    └── <bag>_0.mcap
+```
+
+Minimal `session.yaml`:
+
+```yaml
+date: 2026-10-20
+location: UCU Cinema
+environment: indoor              # indoor / outdoor
+lighting: artificial, constant
+surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
+zed_config: zed2i_record.yaml
+notes: |
+  - Anything unusual about the recording: gaps, broken topics, sensors that misbehaved.
+```
+
+**2. Check the bags.** Generate the reports and look for gaps, low rates or broken odometry. Write any problems in `notes`.
+
+```bash
+python scripts/generate_bags_report.py --session 2026-10-20_ucu-cinema
+```
+
+**3. Add the bags to [manifest.csv](manifest.csv),** one row per bag:
+
+| Column | Value |
+|---|---|
+| `bag`, `session` | bag folder name and session folder name |
+| `ride_type` | one of the [ride types](#ride-types) |
+| `terrain` | `;`-separated terrain in the ride: `ground`, `bumps`, `stones`, `stony_area` |
+| `max_speed_ms` | max speed in m/s, e.g. `0.5`; empty for `test` bags |
+| `duration_s` | duration in seconds, rounded (`ros2 bag info <bag>` or `duration` in `metadata.yaml`, in ns) |
+| `size_mb` | size of the `.mcap` in MB (`du -m <bag>/*.mcap`) |
+| `split` | `train`, `val` or `exclude` (`test` bags and bags you should not train on) |
+| `notes` | optional, short |
+
+**4. Update the docs if needed.** For a new ride type, add it to [Ride types](#ride-types). If the recorded topics changed, also update the topic table in [hf_README.md](hf_README.md) and upload it (see [Hugging Face repo](#hugging-face-repo)).
+
+**5. Upload the session to Hugging Face.** This uploads the bags and the YAML files in one commit:
+
+```bash
+hf upload erc-samples/traversability-costmap data/raw/2026-10-20_ucu-cinema raw/2026-10-20_ucu-cinema \
+    --repo-type dataset --commit-message "add session 2026-10-20_ucu-cinema"
+```
+
+If the upload is interrupted, run the same command again. Files that are already uploaded are skipped.
+
+**6. Commit the metadata to git.** The `.mcap` files are ignored by git, so this adds only the YAML files and the manifest:
+
+```bash
+git add data/raw/2026-10-20_ucu-cinema data/manifest.csv
+git commit -m "chore(data): add session 2026-10-20_ucu-cinema"
+```
+
 ## Directory structure
 
 ```
 data/
 ├── README.md
+├── hf_README.md                  # dataset card of the Hugging Face repo (uploaded there as README.md)
 ├── manifest.csv                  # one row per bag: session, ride type, terrain, speed, duration, size, split
 └── raw/
     └── <session>/                # e.g. 2026-10-17_ucu-cinema  (<YYYY-MM-DD>_<location>)
@@ -115,6 +203,31 @@ data/
 ```
 
 `manifest.csv` is the single source of truth for which bags exist and which split (`train` / `val` / `exclude`) each one belongs to.
+
+### Hugging Face repo
+
+The [dataset repo](https://huggingface.co/datasets/erc-samples/traversability-costmap) has the same layout as `data/`, without `manifest.csv`:
+
+```
+erc-samples/traversability-costmap/
+├── README.md                     # dataset card, from data/hf_README.md
+├── .gitattributes                # stores .mcap files in LFS
+└── raw/
+    └── <session>/                # same as data/raw/<session>/
+        ├── session.yaml
+        ├── zed2i_record.yaml
+        └── <bag>/
+            ├── metadata.yaml
+            └── <bag>_0.mcap
+```
+
+The YAML files on the Hub are copies of the ones in git, and they can be out of date. The git versions are the up-to-date ones, so [scripts/download_data.py](../scripts/download_data.py) downloads only the `.mcap` files.
+
+The dataset card is kept in [hf_README.md](hf_README.md). After you change it, upload it:
+
+```bash
+hf upload erc-samples/traversability-costmap data/hf_README.md README.md --repo-type dataset
+```
 
 ## Ride types
 
