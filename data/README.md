@@ -4,7 +4,7 @@ ROS 2 bags (`.mcap`) recorded on the Indomitus rover while driving over differen
 
 Recordings are grouped into **sessions**: one session is one recording day at one location, and it has a single camera configuration.
 
-Dataset on Hugging Face: [erc-samples/traversability-costmap](https://huggingface.co/datasets/erc-samples/traversability-costmap)
+Dataset on Hugging Face: [ucu-space-robotics/traversability-costmap](https://huggingface.co/datasets/ucu-space-robotics/traversability-costmap)
 
 ## Contents
 
@@ -70,9 +70,9 @@ Filters can be repeated and combined. Bags with `split=exclude`, such as `test` 
 Use the `hf` CLI directly. The Hub repo has the same layout as `data/` (see [Hugging Face repo](#hugging-face-repo)), so download into `data/` with `--include "*.mcap"`. Without that filter, the Hub copies of the YAML files overwrite the newer ones from git.
 
 ```bash
-hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "*.mcap"                                     # all bags
-hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*.mcap"           # one session
-hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "raw/*/flat_05ms_1_20261019_152249/*.mcap"   # one bag
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "*.mcap"                                     # all bags
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*.mcap"           # one session
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/*/flat_05ms_1_20261019_152249/*.mcap"   # one bag
 ```
 
 ## Bag reports
@@ -123,7 +123,7 @@ If the ssh connection drops during a recording, reconnect and run `scripts/recor
 
 ## Adding a session
 
-You need a Hugging Face token with write access to `erc-samples` (`hf auth login`).
+You need a Hugging Face token with write access to `ucu-space-robotics` (`hf auth login`).
 
 **1. Create the session folder.** Name it `<YYYY-MM-DD>_<location>`, record the bags into it with `--copy-to data/raw/<session>`, and add the two YAML files:
 
@@ -173,7 +173,7 @@ python scripts/generate_bags_report.py --session 2026-10-20_ucu-cinema
 **5. Upload the session to Hugging Face.** This uploads the bags and the YAML files in one commit:
 
 ```bash
-hf upload erc-samples/traversability-costmap data/raw/2026-10-20_ucu-cinema raw/2026-10-20_ucu-cinema \
+hf upload ucu-space-robotics/traversability-costmap data/raw/2026-10-20_ucu-cinema raw/2026-10-20_ucu-cinema \
     --repo-type dataset --commit-message "add session 2026-10-20_ucu-cinema"
 ```
 
@@ -206,10 +206,10 @@ data/
 
 ### Hugging Face repo
 
-The [dataset repo](https://huggingface.co/datasets/erc-samples/traversability-costmap) has the same layout as `data/`, without `manifest.csv`:
+The [dataset repo](https://huggingface.co/datasets/ucu-space-robotics/traversability-costmap) has the same layout as `data/`, without `manifest.csv`:
 
 ```
-erc-samples/traversability-costmap/
+ucu-space-robotics/traversability-costmap/
 ├── README.md                     # dataset card, from data/hf_README.md
 ├── .gitattributes                # stores .mcap files in LFS
 └── raw/
@@ -226,7 +226,7 @@ The YAML files on the Hub are copies of the ones in git, and they can be out of 
 The dataset card is kept in [hf_README.md](hf_README.md). After you change it, upload it:
 
 ```bash
-hf upload erc-samples/traversability-costmap data/hf_README.md README.md --repo-type dataset
+hf upload ucu-space-robotics/traversability-costmap data/hf_README.md README.md --repo-type dataset
 ```
 
 ## Ride types

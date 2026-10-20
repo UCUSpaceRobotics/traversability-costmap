@@ -28,7 +28,7 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 # --- Dataset settings ---------------------------------------------------------
-HF_REPO_ID = "erc-samples/traversability-costmap"
+HF_REPO_ID = "ucu-space-robotics/traversability-costmap"
 DEFAULT_REVISION = "main"
 
 REPO_ROOT = Path(__file__).resolve().parent.parent

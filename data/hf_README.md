@@ -64,8 +64,8 @@ With the code repo, use [scripts/download_data.py](https://github.com/UCUSpaceRo
 Without it, use the `hf` CLI:
 
 ```bash
-hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data                                          # everything
-hf download erc-samples/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*"  # one session
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data                                          # everything
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*"  # one session
 ```
 
 ## Reading the bags

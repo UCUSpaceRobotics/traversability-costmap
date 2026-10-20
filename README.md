@@ -35,7 +35,7 @@ The dataset is a set of ROS 2 bags (`.mcap`) recorded by teleoperating the Indom
 
 The camera images are the model input. The IMU and odometry provide the self-supervised labels (slip and vibration).
 
-The bags are hosted on Hugging Face at [erc-samples/traversability-costmap](https://huggingface.co/datasets/erc-samples/traversability-costmap). [data/manifest.csv](data/manifest.csv) lists each bag and its train/val split. See [data/README.md](data/README.md) for how to download the data, the directory layout, ride types, bag naming, and how to generate per-bag quality reports.
+The bags are hosted on Hugging Face at [ucu-space-robotics/traversability-costmap](https://huggingface.co/datasets/ucu-space-robotics/traversability-costmap). [data/manifest.csv](data/manifest.csv) lists each bag and its train/val split. See [data/README.md](data/README.md) for how to download the data, the directory layout, ride types, bag naming, and how to generate per-bag quality reports.
 
 
 ## Approach
