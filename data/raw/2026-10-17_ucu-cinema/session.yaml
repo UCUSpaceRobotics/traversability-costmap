@@ -4,6 +4,6 @@ environment: indoor
 lighting: artificial, constant
 surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
 zed_config: zed2i_record.yaml
-notes >
-  Odometry after the EKF (/rover/odom) is not smooth and contains jumps.
-  Do not use /rover/odom topic, also it is not recomended to use this session for training or validation at all.
+notes: |
+  - Odometry after the EKF (/rover/odom) is not smooth and contains jumps.
+  - Do not use /rover/odom topic, also it is not recomended to use this session for training or validation at all.

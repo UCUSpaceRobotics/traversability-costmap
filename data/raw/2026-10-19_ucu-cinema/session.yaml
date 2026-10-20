@@ -4,3 +4,6 @@ environment: indoor
 lighting: artificial, constant
 surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
 zed_config: zed2i_record.yaml
+notes: |
+  - In some bags, topics have gaps during the first ~6 s of the recording. After that they are recorded continuously.
+  - In some bags, /tf is published at about half of its expected rate.
