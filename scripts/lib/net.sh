@@ -1,5 +1,4 @@
 # Network helpers for scripts that talk to the rover. Source this file, do not run it.
-# Adapted from scripts/utils.sh of indomitus-rover-core.
 
 # ===========================================================================
 # FUNCTION: ensure_wifi_connection
