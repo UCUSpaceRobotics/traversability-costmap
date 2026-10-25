@@ -110,36 +110,11 @@ def resolve_bags(path: Path) -> list[Path]:
     return bags
 
 def grab_metadata(reader: AnyReader, odom_topic: str) -> tuple[dict, list, np.ndarray | None, str | None]:
-    """First streaming pass. Retains numerical telemetry only, not images."""
-    chosen = {CAMERA_TOPIC, odom_topic, STATIC_TF_TOPIC}
-    connections = [c for c in reader.connections if c.topic in chosen]
-    edges = {}
-    states = []
-    camera_matrix = None
-    camera_frame = None
-    for conn, rx_time, raw in reader.messages(connections=connections):
-        msg = reader.deserialize(raw, conn.msgtype)
-        if conn.topic == CAMERA_TOPIC:
-            if camera_matrix is None:
-                camera_matrix = np.asarray(msg.k, dtype=np.float64).reshape(3, 3)
-                camera_frame = normalize_frame(msg.header.frame_id)
-        elif conn.topic == STATIC_TF_TOPIC:
-            for tf in msg.transforms:
-                parent = normalize_frame(tf.header.frame_id)
-                child = normalize_frame(tf.child_frame_id)
-                if parent and child:
-                    edges[(parent, child)] = tf_to_matrix(tf.transform)
-        elif conn.topic == odom_topic:
-            pose = msg.pose.pose
-            twist = msg.twist.twist
-            p, q = pose.position, pose.orientation
-            states.append((timestamp_ns(msg, rx_time),
-                           np.array([p.x, p.y, p.z], dtype=np.float64),
-                           np.array([q.w, q.x, q.y, q.z], dtype=np.float64),
-                           np.array([twist.linear.x, twist.angular.z], dtype=np.float64)))
-    states.sort(key=lambda x: x[0])
-    states = [r for i, r in enumerate(states) if i == 0 or r[0] > states[i - 1][0]]
-    return edges, states, camera_matrix, camera_frame
+    """Legacy inventory wrapper. Conversion must use recording.read_metadata's TF buffer."""
+    from .recording import read_metadata
+    metadata = read_metadata(reader, odom_topic)
+    return (metadata.transforms.static, metadata.states,
+            metadata.intrinsics, metadata.camera_frame)
 
 # ==========================
 # CSV label reading and writing
@@ -190,4 +165,3 @@ def save_depth_png(message, output: Path) -> None:
     mm[valid] = np.rint(metres[valid] * 1000).astype(np.uint16)
     if not cv2.imwrite(str(output), mm):
         raise OSError(f'Could not save {output}')
-

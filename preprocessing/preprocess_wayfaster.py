@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import argparse
 import csv
+import io
+import json
 import sys
 from pathlib import Path
 
@@ -22,18 +24,29 @@ import numpy as np
 import yaml
 from rosbags.highlevel import AnyReader
 
-from src.base import *
+from src.base import ODOM_TOPIC, resolve_bags
 from src.convert import convert_bag, read_manifest
 from src.make_npz import decode_matrix, get_extrinsics_original, voxelize_mm
+from src.output import atomic_write_text, save_npz_exclusive, exclusive_lock
+from src.recording import read_metadata
+from src.transforms import validate_transform
+from src.validation import (ValidationLimits, parse_timestamp_ns, validate_sequence,
+                            validate_states)
 
 
 def run_convert(args) -> None:
+    args.output.mkdir(parents=True, exist_ok=True)
+    with exclusive_lock(args.output / '.conversion.lock'):
+        _run_convert(args)
+
+
+def _run_convert(args) -> None:
     manifest = read_manifest(args.manifest)
     bags = resolve_bags(args.input)
     groups = {'train': [], 'val': [], 'inference': []}
     errors = []
     for bag in bags:
-        session = bag.parent.name if bag.parent != args.input else 'session'
+        session = bag.parent.name
         split = manifest.get((session, bag.name), args.split)
         if split == 'exclude' and not args.include_excluded:
             print(f'[SKIP] excluded: {bag.name}')
@@ -66,14 +79,19 @@ def run_convert(args) -> None:
         if not items:
             continue
         directory.mkdir(parents=True, exist_ok=True)
-        with (directory / 'rosbags.csv').open('w', newline='') as f:
-            writer = csv.writer(f)
+        for filename, names in (
+                ('rosbags.csv', [name for name, ready in items if ready]),
+                ('inference_bags.csv', [name for name, _ in items])):
+            destination = directory / filename
+            existing = []
+            if destination.exists():
+                with destination.open(newline='') as handle:
+                    existing = [row['bag'] for row in csv.DictReader(handle)]
+            text = io.StringIO(newline='')
+            writer = csv.writer(text)
             writer.writerow(['bag'])
-            writer.writerows([[name] for name, label_ready in items if label_ready])
-        with (directory / 'inference_bags.csv').open('w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['bag'])
-            writer.writerows([[name] for name, _ in items])
+            writer.writerows([[name] for name in sorted(set(existing + names))])
+            atomic_write_text(destination, text.getvalue())
     print(f'\nConverted {sum(len(x) for x in groups.values())}/{len(bags)} recordings. Errors: {len(errors)}')
     if errors:
         for err in errors:
@@ -92,35 +110,65 @@ def run_inspect(args) -> None:
         print('Message count:', reader.message_count)
         for c in reader.connections:
             print(f'  {c.topic:70} {c.msgtype}')
-        edges, states, K, frame = grab_metadata(reader, args.odom_topic)
-        print('Camera frame:', frame)
-        print('Camera K:', K)
-        print('Odom states:', len(states))
+        metadata = read_metadata(reader, args.odom_topic, args.base_frame, args.odom_frame,
+                                 ValidationLimits.from_args(args))
+        print('Camera frame:', metadata.camera_frame)
+        print('Camera K:', metadata.intrinsics)
+        print('Odom pose semantics:', f'^{metadata.odom_frame} T_{metadata.base_frame}')
+        print('Odom states:', len(metadata.states))
         print('Static TF edges:')
-        for parent, child in sorted(edges):
+        for parent, child in sorted(metadata.transforms.static):
             print(f'  {parent} -> {child}')
+        print('Dynamic TF edges:')
+        for (parent, child), samples in sorted(metadata.transforms.dynamic.items()):
+            print(f'  {parent} -> {child}: {len(samples)} samples')
+        print('Overlapping static/dynamic edges (authority must be chosen explicitly):')
+        for parent, child in metadata.transforms.conflicts:
+            print(f'  {parent} -> {child}')
+        for difference in metadata.transforms.conflict_summary():
+            print('  Static/dynamic discrepancy:', difference)
+        for policy in ('prefer-static', 'prefer-dynamic'):
+            path = metadata.transforms.camera_path(metadata.camera_frame, args.base_frame, policy)
+            print(f'Camera chain with {policy}:', metadata.transforms.describe(path))
 
 def run_make_npz(args) -> None:
     record = args.recording
+    limits = ValidationLimits.from_args(args)
+    provenance_file = record / 'preprocessing.json'
+    if not provenance_file.exists():
+        raise ValueError('Missing preprocessing.json; reconvert with validated preprocessing')
+    provenance = json.loads(provenance_file.read_text())
+    if provenance.get('schema_version') != 2 or provenance.get('complete') is not True:
+        raise ValueError('Legacy/incomplete recording: reconvert with validated preprocessing')
+    if provenance.get('base_frame') != args.base_frame or provenance.get('odom_frame') != args.odom_frame:
+        raise ValueError('Converted recording odometry/base frames do not match requested frames')
     with (record / 'images.csv').open(newline='') as f:
         image_rows = list(csv.DictReader(f))
-    state_file = record / 'states.csv'
-    if not state_file.exists():
-        state_file = record / 'states_unlabeled.csv'
+    state_files = [p for p in (record / 'states.csv', record / 'states_unlabeled.csv') if p.exists()]
+    if len(state_files) != 1:
+        raise ValueError('Recording must contain exactly one labeled or unlabeled states CSV; stale/partial output')
+    state_file = state_files[0]
+    if (state_file.name == 'states.csv') != bool(provenance.get('trainable')):
+        raise ValueError('Supervision metadata and states CSV disagree')
     with state_file.open(newline='') as f:
         state_rows = list(csv.DictReader(f))
-    T = args.frames or 6
+    config = yaml.safe_load(args.config.read_text())['MODEL']
+    T = args.frames or int(config['TIME_LENGTH'])
+    all_image_ns = np.array([parse_timestamp_ns(r['timestamp']) for r in image_rows], dtype=np.int64)
+    image_ns = validate_sequence(all_image_ns, args.index, T, int(config['TIME_LENGTH']), limits.max_frame_gap)
     selected = image_rows[args.index:args.index + T]
-    if len(selected) != T:
-        raise ValueError(f'Not enough image frames: requested {T} at index {args.index}')
-    state_time = np.asarray([float(r['timestamp']) for r in state_rows])
+    state_ns = np.array([parse_timestamp_ns(r['timestamp']) for r in state_rows], dtype=np.int64)
     state_pos = np.asarray([decode_matrix(r['position'], (3,)) for r in state_rows])
     state_quat = np.asarray([decode_matrix(r['quaternion'], (4,)) for r in state_rows])
-    image_time = np.asarray([float(r['timestamp']) for r in selected])
+    state_actions = np.asarray([decode_matrix(r['action'], (2,)) for r in state_rows])
+    validate_states(list(zip(state_ns, state_pos, state_quat, state_actions)), limits)
+    image_time = image_ns.astype(np.float64) / 1e9
     K = [decode_matrix(r['intrinsics'], (3, 3)) for r in selected]
-    T_base_cam = [decode_matrix(r['cam2base'], (4, 4)) for r in selected]
-    extrinsics = get_extrinsics_original(image_time, state_time, state_pos, state_quat, T_base_cam)
-    config = yaml.safe_load(args.config.read_text())['MODEL']
+    if any(not np.isfinite(k).all() or abs(np.linalg.det(k)) < 1e-8 for k in K):
+        raise ValueError('Invalid camera intrinsics in images.csv')
+    T_base_cam = [validate_transform(decode_matrix(r['cam2base'], (4, 4))) for r in selected]
+    extrinsics = get_extrinsics_original(image_ns, state_ns, state_pos, state_quat, T_base_cam,
+                                         limits, timestamps_ns=True)
     out_w, out_h = config['INPUT_SIZE']
     rgb_tensors, cloud_tensors, K_tensors = [], [], []
     for row, k, extr in zip(selected, K, extrinsics):
@@ -128,6 +176,8 @@ def run_make_npz(args) -> None:
         dep = cv2.imread(str(record / row['depth']), cv2.IMREAD_UNCHANGED)
         if rgb is None or dep is None or dep.ndim != 2 or dep.dtype != np.uint16:
             raise ValueError(f'Missing RGB or uint16 depth at {row["timestamp"]}')
+        if dep.shape != rgb.shape[:2]:
+            raise ValueError('RGB and registered depth dimensions differ')
         # Original loader voxelizes full-resolution depth before resizing RGB.
         cloud_tensors.append(voxelize_mm(dep, k, extr, config['GRID_BOUNDS'], args.pixel_step))
         h, w = rgb.shape[:2]
@@ -140,13 +190,12 @@ def run_make_npz(args) -> None:
         rgb_tensors.append(rgb.transpose(2, 0, 1).astype(np.float32) / 255.0)
         K_tensors.append(k.astype(np.float32))
     destination = args.output
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(destination,
+    save_npz_exclusive(destination,
                         color_img=np.stack(rgb_tensors)[None],
                         pcloud=np.stack(cloud_tensors)[None],
                         intrinsics=np.stack(K_tensors)[None],
                         extrinsics=np.stack(extrinsics).astype(np.float32)[None],
-                        timestamps=image_time)
+                        timestamps=image_time, timestamps_ns=image_ns)
     print('Saved inference input:', destination)
     print('  color_img:', (1, T, 3, out_h, out_w))
     print('  pcloud:', (1, T, *cloud_tensors[0].shape))
@@ -158,9 +207,10 @@ def run_make_npz(args) -> None:
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     commands = parser.add_subparsers(dest='command', required=True)
-    p = commands.add_parser('inspect', help='Show recorded topics, odometry and TF static frames')
+    p = commands.add_parser('inspect', help='Show topics, validated odometry and static/dynamic TF conflicts')
     p.add_argument('--input', type=Path, required=True)
     p.add_argument('--odom-topic', default=ODOM_TOPIC)
+    add_validation_arguments(p)
     p.set_defaults(func=run_inspect)
 
     p = commands.add_parser('convert', help='Convert MCAP bag(s) to WayFASTER CSV + images')
@@ -174,10 +224,15 @@ def main():
     p.add_argument('--require-labels', action='store_true', help='Fail if any included bag lacks labels')
     p.add_argument('--max-label-gap', type=float, default=0.11)
     p.add_argument('--odom-topic', default=ODOM_TOPIC)
-    p.add_argument('--base-frame', default='base_footprint')
+    add_validation_arguments(p)
     p.add_argument('--camera-frame', help='Override CameraInfo optical frame name if necessary')
-    p.add_argument('--cam2base-json', type=Path, help='Override static TF with calibrated 4x4 matrix JSON')
-    p.add_argument('--sync-tolerance-ms', type=float, default=30.0)
+    p.add_argument('--cam2base-json', type=Path, help='Explicit calibrated rigid camera-to-base override')
+    p.add_argument('--tf-policy', choices=['require-explicit', 'prefer-dynamic', 'prefer-static'],
+                   default='require-explicit', help='Authority for overlapping TF edges; default rejects conflicts')
+    p.add_argument('--max-tf-gap', type=float, default=0.2, help='Maximum interpolation bracket in dynamic TF, seconds')
+    p.add_argument('--sync-tolerance-ms', type=float, default=0.0,
+                   help='Maximum RGB/depth acquisition-time offset; default requires exact stamps')
+    p.add_argument('--max-sync-buffer', type=int, default=32, help='Maximum pending compressed messages per stream')
     p.add_argument('--future-seconds', type=float, default=0.0,
                    help='Discard RGB-D samples with less than this many future odom seconds. '
                         'For training, normally TRAINING.HORIZON * TRAINING.DT.')
@@ -194,14 +249,41 @@ def main():
     p.add_argument('--frames', type=int, default=0, help='Defaults to MODEL.TIME_LENGTH in config')
     p.add_argument('--pixel-step', type=int, default=1,
                    help='Depth voxelization stride. 1 matches official loader.')
+    add_validation_arguments(p)
     p.set_defaults(func=run_make_npz)
 
     args = parser.parse_args()
     if getattr(args, 'frame_step', 1) < 1 or getattr(args, 'pixel_step', 1) < 1:
         parser.error('--frame-step and --pixel-step must be >=1')
+    try:
+        ValidationLimits.from_args(args)
+    except ValueError as exc:
+        parser.error(str(exc))
+    for name in ('sync_tolerance_ms', 'future_seconds', 'max_label_gap'):
+        value = getattr(args, name, 0)
+        if not np.isfinite(value) or value < 0:
+            parser.error(f'--{name.replace("_", "-")} must be finite and >= 0')
+    if hasattr(args, 'max_tf_gap') and (not np.isfinite(args.max_tf_gap) or args.max_tf_gap <= 0):
+        parser.error('--max-tf-gap must be finite and > 0')
+    if getattr(args, 'max_sync_buffer', 1) < 1 or getattr(args, 'min_frames', 1) < 1:
+        parser.error('--max-sync-buffer and --min-frames must be >= 1')
+    if getattr(args, 'max_frames', 0) < 0 or getattr(args, 'index', 0) < 0 or getattr(args, 'frames', 0) < 0:
+        parser.error('--max-frames, --index and --frames must be >= 0')
     if args.command == 'make-npz' and args.frames == 0:
         args.frames = int(yaml.safe_load(args.config.read_text())['MODEL']['TIME_LENGTH'])
-    args.func(args)
+    try:
+        args.func(args)
+    except (ValueError, OSError) as exc:
+        parser.exit(2, f'[ERROR] {exc}\n')
+
+
+def add_validation_arguments(parser):
+    parser.add_argument('--base-frame', default='base_footprint', help='Odometry child and target camera base frame')
+    parser.add_argument('--odom-frame', default='odom', help='Required odometry parent frame')
+    for name, field in ValidationLimits.__dataclass_fields__.items():
+        parser.add_argument('--' + name.replace('_', '-'), type=float, default=field.default,
+                            help=f'Integrity limit ({name}); default {field.default}. '
+                                 'Times in seconds, position step in metres, rotation step in radians.')
 
 
 if __name__ == '__main__':

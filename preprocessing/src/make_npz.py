@@ -1,5 +1,8 @@
 
-from src.base import *
+import numpy as np
+from scipy.spatial.transform import Rotation
+
+from .validation import ValidationLimits, interpolate_state, validate_states
 
 def require_fields(record: dict, fields: list[str]) -> None:
     for name in fields:
@@ -44,13 +47,22 @@ def voxelize_mm(depth_mm: np.ndarray, K: np.ndarray, extr: np.ndarray, bounds: d
 
 def get_extrinsics_original(image_times: np.ndarray, state_times: np.ndarray,
                             positions: np.ndarray, quat_wxyz: np.ndarray,
-                            cam2base: list[np.ndarray]) -> list[np.ndarray]:
-    """Equivalent geometry to official Dataset.get_extrinsics without augmentation."""
-    indices = np.searchsorted(state_times, image_times, side='left')
-    if np.any(indices >= len(state_times)):
-        raise ValueError('Image sequence has no corresponding odometry')
-    p = positions[indices]
-    q = quat_wxyz[indices][:, [1, 2, 3, 0]]
+                            cam2base: list[np.ndarray], limits=None,
+                            timestamps_ns=False) -> list[np.ndarray]:
+    """WayFASTER final-heading convention, with bounded image-time pose sampling.
+
+    Conversion inserts these image-time poses in states.csv so the official
+    loader can use them too. Its planar-reference rotation convention is retained.
+    """
+    limits = limits or ValidationLimits()
+    factor = 1 if timestamps_ns else 1e9
+    states = validate_states([(int(round(t * factor)), np.asarray(p), np.asarray(q), np.zeros(2))
+                              for t, p, q in zip(state_times, positions, quat_wxyz)], limits)
+    sampled = [interpolate_state(states, int(round(t * factor)), limits)[0] for t in image_times]
+    p = np.asarray([s[1] for s in sampled])
+    q = np.asarray([s[2] for s in sampled])[:, [1, 2, 3, 0]]
+    if len(cam2base) != len(sampled):
+        raise ValueError('Camera transforms and image timestamps have different lengths')
     euler = Rotation.from_quat(q).as_euler('zyx')
     heading_last = euler[-1, 0]
     heading_frame = Rotation.from_euler('zyx', [heading_last, 0, 0])
