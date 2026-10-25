@@ -80,22 +80,22 @@ def main():
         save_weights_only   = True,
         save_last           = True,
         save_top_k          = 1)
-    
+
     lr_monitor = LearningRateMonitor(logging_interval='epoch')
 
     trainer = pl.Trainer(
-        devices                 = -1,
-        num_nodes               = 1,
-        gradient_clip_val       = 10,
-        sync_batchnorm          = True,
-        enable_model_summary    = True,
-        accelerator             = 'gpu',
-        logger                  = wandb_logger,
-        default_root_dir        = 'checkpoints',
-        max_epochs              = configs.TRAINING.EPOCHS,
-        precision               = configs.TRAINING.PRECISION,
-        strategy                = DDPStrategy(find_unused_parameters=False),
-        callbacks               = [checkpoint_callback, lr_monitor],
+        devices=1,
+        num_nodes=1,
+        gradient_clip_val=10,
+        sync_batchnorm=False,
+        enable_model_summary=True,
+        accelerator='gpu',
+        logger=wandb_logger,
+        default_root_dir='checkpoints',
+        max_epochs=configs.TRAINING.EPOCHS,
+        precision=configs.TRAINING.PRECISION,
+        strategy='auto',
+        callbacks=[checkpoint_callback, lr_monitor],
     )
 
     trainer.fit(model, train_loader, valid_loader)

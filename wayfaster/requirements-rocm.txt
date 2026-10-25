@@ -1,0 +1,16 @@
+
+numpy>=1.19.1
+matplotlib>=3.3.1
+pillow
+tqdm>=4.48.2
+absl-py
+pandas
+pytorch-lightning
+opencv-python
+kornia==0.7.1
+wandb>=0.12.10
+easydict
+contourpy
+rospkg
+pycryptodomex
+gnupg
