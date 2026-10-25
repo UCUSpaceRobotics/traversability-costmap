@@ -3,9 +3,9 @@
 A standalone CLI that prepares your UCU rover ROS2 `.mcap` recordings for:
 
 1. **Pretrained inference**: RGB-D sequence, K, camera poses, depth-derived voxel cloud → `input.npz`.
-2. **Fine-tuning**: exact original WayFASTER `rosbags.csv`, `images.csv`, `states.csv` layout **only if you provide calibrated μ/ν labels**.
+2. **Fine-tuning**: original WayFASTER `rosbags.csv`, `images.csv`, `states.csv` layout with supplied labels or experimental odometry-based `--rhe` labels.
 
-The converter does **not fabricate** traversability training targets. Its unlabelled outputs contain `states_unlabeled.csv`, not a deceptive `states.csv` with constant targets. Do not train until the experimental μ/ν methodology has been decided and validated.
+The converter does **not fabricate** traversability training targets. Without supplied labels or `--rhe`, it writes `states_unlabeled.csv`. RHE exports only continuous, fully labeled clips with six-image context and a complete 30-second future trajectory. See [RHE setup and limitations](src/labels/RHE_SETUP_AND_VALIDATION.md); experimental labels still require physical validation.
 
 ## Prerequisites
 
@@ -103,7 +103,7 @@ Positions, all six twist components, and quaternions must be finite. Quaternions
 
 Position/velocity are linearly interpolated and orientation uses SLERP at the RGB timestamp. Image-time states are inserted alongside measured odometry in the exported state CSV so the original loader can use the same poses. WayFASTER's final-frame yaw-aligned planar reference convention is retained, including its handling of vertical translation and Euler angles; this is not a new general 6-DoF model.
 
-The exported `action` remains measured odometry `linear.x/angular.z`, **not commands**. Integrity checks do not establish fused-odometry independence from wheel measurements. That independence and command synchronization must be evaluated separately before RHE/traction labeling. No RHE or μ/ν generation is implemented here.
+The exported `action` remains measured odometry `linear.x/angular.z`, **not commands**. Integrity checks do not establish fused-odometry independence from wheel measurements. RHE reads commands separately and masks anomalous measurements/intervals rather than repairing odometry.
 
 ### Safe publication and reruns
 
@@ -116,7 +116,7 @@ Completed recordings carry `schema_version: 2` and `complete: true` in metadata.
 ```bash
 python preprocessing/preprocess_wayfaster.py make-npz \
   --recording wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__flat_05ms_1_20261019_152249 \
-  --config ../wayfaster/configs/temporal_model.yaml \
+  --config wayfaster/configs/temporal_model.yaml \
   --index 0 \
   --output wayfaster/prepared/flat_05ms_clip0.npz
 ```
@@ -138,18 +138,50 @@ The `.npz` keys are:
 
 The index must be nonnegative, frame count must equal `MODEL.TIME_LENGTH`, timestamps must be strictly increasing, and the selected clip must satisfy `--max-frame-gap`. Recording boundaries are never crossed. NPZ export revalidates the full state trajectory before sampling poses.
 
-Using your previously created runner:
+Run the dedicated inference script from the repository root, using your existing
+PyTorch/torchvision environment (including ROCm support on the AMD machine):
 
 ```bash
-cd wayfaster
-ROCR_VISIBLE_DEVICES=0 python wayfaster_runner.py predict \
-  --input-npz prepared/flat_05ms_clip0.npz \
-  --output-dir results/flat_05ms_clip0
+ROCR_VISIBLE_DEVICES=0 python scripts/infer_wayfaster.py \
+  --input-npz wayfaster/prepared/flat_05ms_clip0.npz \
+  --output-dir /tmp/opencode/flat_05ms-prediction
 ```
 
-This path does not require `states.csv`, because it bypasses the original training-oriented dataset loader.
+Defaults use `wayfaster/configs/temporal_model.yaml` and
+`wayfaster/pretrained/wayfaster_weights_only.pt`. Override them with `--config`
+and `--checkpoint`. `--device auto` uses CUDA/ROCm when available and otherwise
+CPU; use `--device cpu` or `--device cuda` to select explicitly. Checkpoints are
+loaded with `weights_only=True`, and all model weights must match exactly.
+
+The new output directory contains `prediction.npz` (a `[1,2,100,100]`
+`traversability` tensor plus `timestamps_ns`), `prediction.png` (last RGB and both
+map channels), and `summary.json` (input, checkpoint, configuration, device and
+forward-pass duration). Maps are shown in raw model index order, not a calibrated
+navigation display. Existing output directories are refused, and failures do not
+publish partial results.
+
+This path does not require `states.csv`, because it bypasses the original training-oriented dataset loader. It runs the selected checkpoint without fine-tuning on rover labels.
 
 ## Step 4 — Make a trainable dataset (requires labels)
+
+To estimate labels from recorded commands and fused odometry using the paper-inspired
+reduced RHE, use the existing converter with `--rhe` instead of `--labels-dir`:
+
+```bash
+python preprocessing/preprocess_wayfaster.py convert \
+  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
+  --output /tmp/opencode/rover-rhe \
+  --split train --rhe --future-seconds 30 --tf-policy prefer-dynamic
+```
+
+Use a new output directory. Diagnostics are saved even when no clip survives the
+strict coverage requirement. Add `--require-labels` to make zero exported clips an
+error. Low-excitation fits are accepted only when both coefficients are numerically
+identifiable from measurements; priors do not establish observability. Do not fill
+unknown coefficients or relax anomaly checks just to create training data. See the
+[RHE guide](src/labels/RHE_SETUP_AND_VALIDATION.md) for masks, defaults and caveats.
+
+Alternatively, supply externally generated, validated labels as follows.
 
 For every recording, prepare a separate label file:
 
