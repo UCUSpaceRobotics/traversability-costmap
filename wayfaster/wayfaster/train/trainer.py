@@ -20,7 +20,7 @@ class TrainingModule(pl.LightningModule):
         super().__init__()
         # Save hyperparamters to hparams.yaml
         self.save_hyperparameters()
-        
+
         # Get training params
         self.eps = 1e-6
         gamma = torch.tensor([configs.TRAINING.GAMMA**i for i in range(configs.TRAINING.HORIZON)])
@@ -28,13 +28,13 @@ class TrainingModule(pl.LightningModule):
         self.learning_rate = configs.OPTIMIZER.LR
         self.weight_decay = configs.OPTIMIZER.WEIGHT_DECAY
         self.depth_weight = configs.TRAINING.DEPTH_WEIGHT
-        
+
         # Depth training
         self.train_depth = configs.MODEL.TRAIN_DEPTH
-        
+
         # Depth prediction
         self.predict_depth = configs.MODEL.PREDICT_DEPTH
-        
+
         # Mapping Model
         self.model = TravNet(
             configs.MODEL.GRID_BOUNDS,
@@ -161,12 +161,12 @@ class TrainingModule(pl.LightningModule):
         """
         model_params = self.model.parameters()
         optimizer = torch.optim.AdamW(model_params, lr=self.learning_rate, weight_decay=self.weight_decay)
-        
+
         # Learning rate scheduler
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=10, eta_min=1e-5)
-        
+
         return [optimizer], [scheduler]
-    
+
     def trav_criterion(self, states, trav_map, target_trav, target_weights):
         """
         Calculate the traversability loss.
@@ -185,11 +185,11 @@ class TrainingModule(pl.LightningModule):
         idxv = 2 * (states[...,1] - self.grid_bounds['ybound'][0]) / (self.grid_bounds['ybound'][1] - self.grid_bounds['ybound'][0]) - 1
         grid = torch.stack((-idxv, -idxu), -1).unsqueeze(1)
         mask = (grid[...,0] >= -1) * (grid[...,0] <= 1) * (grid[...,1] >= -1) * (grid[...,1] <= 1)
-        
+
         # Sample from map
         traversability = F.grid_sample(trav_map, grid, align_corners=True)
         traversability = traversability.permute((0,2,3,1)).squeeze(1)
-        
+
         # Calculate loss
         gamma = self.gamma[:traversability.shape[1]].view(1,-1,1).expand(traversability.shape[0],-1,2)
         error = F.smooth_l1_loss(traversability, target_trav, reduction='none', beta=0.1)
@@ -200,7 +200,6 @@ class TrainingModule(pl.LightningModule):
         error = torch.mean(error[mask.squeeze(1),:])
 
         return loss, error
-    
     def depth_criterion(self, prediction, target, mask):
         """
         Calculate the depth classification loss.
@@ -216,41 +215,47 @@ class TrainingModule(pl.LightningModule):
         loss = F.cross_entropy(prediction, target, reduction='none') * mask
         return torch.mean(loss)
 
-    
-    def visualize(self, image, pcloud, trav_map, pred_depth,
-                  depth_target, depth_mask, debug, executed_path,
-                  prefix='train'):
-
-        # Log each image separately instead of passing a 4D batch
+    def visualize(
+        self, image, pcloud, trav_map, pred_depth,
+        depth_target, depth_mask, debug, executed_path,
+        prefix='train'
+    ):
         def log_batch(name, tensor):
-            tensor = tensor.detach().float().cpu()
+            """
+            Log up to four individual images from a batch.
 
+            Input:  [N, C, H, W]
+            Output: list of [C, H, W] tensors
+            """
             if tensor.ndim != 4:
                 raise ValueError(
-                    f"Expected (N, C, H, W), got {tensor.shape}"
+                    f"Expected 4D image batch, got {tensor.shape}"
                 )
 
+            images = [
+                img.detach().float().cpu()
+                for img in tensor[:4]
+            ]
+
             self.logger.log_image(
-                key=prefix + "_" + name,
-                images=list(tensor.unbind(0))
+                key=f"{prefix}_{name}",
+                images=images
             )
 
-        # RGB images: (B, T, 3, H, W) -> (B*T, 3, H, W)
-        log_batch(
-            "images",
-            image.reshape(-1, *image.shape[2:])
-        )
+        # RGB images: [B, T, 3, H, W] -> [B*T, 3, H, W]
+        images = image.reshape(-1, *image.shape[2:])
+        log_batch("images", images)
 
-        # Point cloud visualization
-        pcloud_vis = torch.mean(pcloud, dim=2, keepdim=True)
-        pcloud_vis = pcloud_vis.reshape(-1, *pcloud_vis.shape[2:])
-        log_batch("pcloud", pcloud_vis)
+        # Point clouds
+        pcloud = torch.mean(pcloud, dim=2, keepdim=True)
+        pcloud = pcloud.reshape(-1, *pcloud.shape[2:])
+        log_batch("pcloud", pcloud)
 
-        # Traversability maps
+        # Traversability predictions
         log_batch("mu", trav_map[:, :1])
         log_batch("nu", trav_map[:, 1:])
 
-        # Predicted depth
+        # Depth prediction
         n_d = (
             self.grid_bounds['dbound'][1]
             - self.grid_bounds['dbound'][0]
@@ -262,34 +267,32 @@ class TrainingModule(pl.LightningModule):
 
         log_batch("depth_pred", depth_pred)
 
-        # Depth ground truth
+        # Depth target
         if self.predict_depth:
-            depth_target_vis = depth_target.unsqueeze(1) / (n_d - 1)
+            depth_target = depth_target.unsqueeze(1) / (n_d - 1)
         else:
-            depth_target_vis = (
+            depth_target = (
                 depth_target.argmax(1).unsqueeze(1) / (n_d - 1)
             )
 
-        log_batch("depth_target", depth_target_vis)
+        log_batch("depth_target", depth_target)
 
-        # Depth validity mask
+        # Depth mask
         log_batch("depth_mask", depth_mask.unsqueeze(1))
 
-        # Debug features
+        # Debug output
         temp = torch.sum(debug, dim=1, keepdim=True)
-        temp_min = torch.amin(temp)
-        temp_max = torch.amax(temp)
-        temp = (temp - temp_min) / (
-            temp_max - temp_min + self.eps
-        )
+        temp_min = temp.min()
+        temp_range = (temp.max() - temp_min).clamp_min(self.eps)
+        temp = (temp - temp_min) / temp_range
 
         log_batch("debug", temp)
 
         # Executed path
-        path_vis = executed_path / (
+        executed_path = executed_path / (
             torch.amax(
-                executed_path, dim=(1, 2, 3), keepdim=True
+                executed_path, (1, 2, 3), keepdim=True
             ) + self.eps
         )
 
-        log_batch("path", path_vis)
+        log_batch("path", executed_path)
