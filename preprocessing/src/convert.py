@@ -17,6 +17,10 @@ from .transforms import validate_transform
 from .validation import ValidationLimits, format_timestamp, interpolate_state
 
 
+class InsufficientFramesError(ValueError):
+    """A valid labeled interval cannot provide the required image history."""
+
+
 def read_manifest(file: Path | None) -> dict:
     if file is None:
         return {}
@@ -25,17 +29,19 @@ def read_manifest(file: Path | None) -> dict:
         return {(r['session'], r['bag']): r['split'] for r in reader}
 
 
-def convert_bag(bag: Path, output: Path, args, label_file: Path | None) -> dict:
+def convert_bag(bag: Path, output: Path, args, label_file: Path | None, rhe_labels=None) -> dict:
     limits = ValidationLimits.from_args(args)
     with staged_recording(output) as stage:
-        return _convert_bag(bag, stage, args, label_file, limits)
+        return _convert_bag(bag, stage, args, label_file, limits, rhe_labels)
 
 
-def _convert_bag(bag, output, args, label_file, limits):
+def _convert_bag(bag, output, args, label_file, limits, rhe_labels=None):
     rgb_dir, depth_dir = output / 'rgb', output / 'depth'
     rgb_dir.mkdir(); depth_dir.mkdir()
     with AnyReader([bag]) as reader:
-        metadata = read_metadata(reader, args.odom_topic, args.base_frame, args.odom_frame, limits)
+        state_range = None if rhe_labels is None else (rhe_labels[0]['timestamp_ns'], rhe_labels[-1]['timestamp_ns'])
+        metadata = read_metadata(reader, args.odom_topic, args.base_frame, args.odom_frame, limits,
+                                 state_range=state_range)
         states, K = metadata.states, metadata.intrinsics
         camera_frame = normalize_frame(args.camera_frame or metadata.camera_frame)
         if camera_frame != metadata.camera_frame:
@@ -63,7 +69,7 @@ def _convert_bag(bag, output, args, label_file, limits):
                                int(limits.max_frame_gap * 1e9), stats, args.max_sync_buffer)
         eligible = 0
         for rt, rm, dt, dm in pairs:
-            if rt < min_ts or rt >= max_ts:
+            if rt < min_ts or rt >= max_ts or dt < min_ts or dt >= max_ts:
                 continue
             state, odom_offset = interpolate_state(states, rt, limits)
             # Depth must have valid motion support as well, even for nonzero pairing tolerance.
@@ -97,7 +103,7 @@ def _convert_bag(bag, output, args, label_file, limits):
             if args.max_frames and len(rows) >= args.max_frames:
                 break
         if len(rows) < args.min_frames:
-            raise ValueError(f'{bag.name}: only {len(rows)} usable RGB-D frames (need {args.min_frames})')
+            raise InsufficientFramesError(f'{bag.name}: only {len(rows)} usable RGB-D frames (need {args.min_frames})')
 
         # Add interpolated image-time poses so the unchanged official loader can use
         # the same sampled poses instead of ceiling to a later raw odometry message.
@@ -106,6 +112,21 @@ def _convert_bag(bag, output, args, label_file, limits):
         exported_states = sorted(combined.values(), key=lambda s: s[0])
         stamps = np.array([s[0] for s in exported_states], dtype=np.float64) / 1e9
         labels = interpolated_labels(stamps, label_file, args.max_label_gap) if label_file else None
+        if rhe_labels is not None:
+            # Only a single uninterrupted accepted run reaches this function.
+            # Relative integer times avoid epoch-float rounding during labeling.
+            label_ns = np.array([r['timestamp_ns'] for r in rhe_labels], dtype=np.int64)
+            if (not all(r['valid'] for r in rhe_labels) or np.any(np.diff(label_ns) <= 0) or
+                    np.any(np.diff(label_ns) > limits.max_odom_gap * 1e9)):
+                raise ValueError('RHE labels must be a continuous, valid, increasing run')
+            state_ns = np.array([s[0] for s in exported_states], dtype=np.int64)
+            if state_ns[0] < label_ns[0] or state_ns[-1] > label_ns[-1]:
+                raise ValueError('RHE labels do not cover the clip states')
+            values = np.array([[r['mu'], r['nu']] for r in rhe_labels])
+            if not np.isfinite(values).all() or np.any((values < 0) | (values > 1)):
+                raise ValueError('Invalid RHE coefficients')
+            labels = np.column_stack([np.interp(state_ns-label_ns[0], label_ns-label_ns[0], values[:, i])
+                                      for i in range(2)])
         with (output / ('states.csv' if labels is not None else 'states_unlabeled.csv')).open('w', newline='') as handle:
             writer = csv.writer(handle)
             writer.writerow(['timestamp', 'position', 'quaternion', 'action'] + (['traversability'] if labels is not None else []))
@@ -132,7 +153,7 @@ def _convert_bag(bag, output, args, label_file, limits):
             'rgbd_pairs_written': len(rows), 'odometry_rows': len(states),
             'exported_state_rows': len(exported_states), 'validation_limits': asdict(limits),
             'sync_tolerance_ms': args.sync_tolerance_ms, 'max_sync_buffer': args.max_sync_buffer,
-            'synchronization': stats, 'sync_statistics_scope': 'through final exported frame',
+            'synchronization': stats, 'sync_statistics_scope': 'source stream through end of conversion scan; not clip-only',
             'max_abs_sync_error_ns': max(abs(s[2]) for s in sync_rows),
             'max_nearest_odom_offset_ns': max(s[3] for s in sync_rows),
             'image_streams': metadata.image_streams,
@@ -147,6 +168,8 @@ def _convert_bag(bag, output, args, label_file, limits):
             'depth_png_units': 'uint16 millimetres, 0 = invalid',
             'labels': str(label_file.resolve()) if label_file else None,
             'trainable': labels is not None,
+            'rhe_clip_interval_ns': state_range,
+            'rhe_method': 'odometry-based WayFASTER adaptation' if rhe_labels is not None else None,
         }
         (output / 'preprocessing.json').write_text(json.dumps(info, indent=2))
         return info

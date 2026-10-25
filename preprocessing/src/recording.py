@@ -20,7 +20,8 @@ class RecordingMetadata:
     image_streams: dict
 
 
-def read_metadata(reader, odom_topic, base_frame='base_footprint', odom_frame='odom', limits=None):
+def read_metadata(reader, odom_topic, base_frame='base_footprint', odom_frame='odom', limits=None,
+                  state_range=None):
     limits = limits or ValidationLimits()
     chosen = {CAMERA_TOPIC, odom_topic, STATIC_TF_TOPIC, DYNAMIC_TF_TOPIC, RGB_TOPIC, DEPTH_TOPIC}
     available = {c.topic for c in reader.connections}
@@ -45,6 +46,12 @@ def read_metadata(reader, odom_topic, base_frame='base_footprint', odom_frame='o
                 stamp = acquisition_ns(tf, conn.topic) if conn.topic == DYNAMIC_TF_TOPIC else None
                 transforms.add(tf.header.frame_id, tf.child_frame_id, tf_to_matrix(tf.transform), stamp)
         elif conn.topic == odom_topic:
+            # RHE selects an already-validated continuous run. Bad telemetry
+            # elsewhere in the bag must not be repaired or included in this clip.
+            if state_range is not None:
+                stamp = int(msg.header.stamp.sec)*1_000_000_000 + int(msg.header.stamp.nanosec)
+                if not state_range[0] <= stamp <= state_range[1]:
+                    continue
             parent, child = normalize_frame(msg.header.frame_id), normalize_frame(msg.child_frame_id)
             if parent != normalize_frame(odom_frame) or child != normalize_frame(base_frame):
                 raise ValueError(f'{odom_topic}: expected pose ^{odom_frame} T_{base_frame}, '

@@ -2,13 +2,13 @@
 """Convert UCU rover ROS2 MCAP recordings to WayFASTER's original CSV/image format.
 
 Commands:
-    convert: MCAP -> images.csv + RGB/depth PNGs + states.csv (only with labels)
+    convert: MCAP -> images.csv + RGB/depth PNGs + states.csv (with labels or --rhe)
     make-npz: converted recording -> inference-ready WayFASTER tensors (.npz)
     inspect: show recorded topics and available TF frames
 
 The original WayFASTER training loader expects traversability [mu, nu] supervision.
-This script DOES NOT invent these values. Add --labels-dir containing per-bag
-CSV files with timestamp,mu,nu to produce trainable states.csv files.
+Supply --labels-dir with timestamp,mu,nu CSVs, or --rhe for experimental
+odometry-based estimates and strictly continuous, fully supervised clips.
 """
 from __future__ import annotations
 
@@ -25,7 +25,8 @@ import yaml
 from rosbags.highlevel import AnyReader
 
 from src.base import ODOM_TOPIC, resolve_bags
-from src.convert import convert_bag, read_manifest
+from src.convert import InsufficientFramesError, convert_bag, read_manifest
+from src.labels.rhe_pipeline import generate_rhe
 from src.make_npz import decode_matrix, get_extrinsics_original, voxelize_mm
 from src.output import atomic_write_text, save_npz_exclusive, exclusive_lock
 from src.recording import read_metadata
@@ -59,18 +60,44 @@ def _run_convert(args) -> None:
         label_file = ((args.labels_dir / f'{bag.name}.csv') if args.labels_dir else None)
         if label_file and not label_file.exists():
             label_file = None
-        if args.require_labels and label_file is None:
+        if args.require_labels and label_file is None and not args.rhe:
             errors.append(f'{bag.name}: missing label CSV; cannot train')
             print('[ERROR]', errors[-1])
             continue
         target = args.output / split / name
         print(f'\n[CONVERT] {bag} -> {target}')
         try:
-            info = convert_bag(bag, target, args, label_file)
-            print(f"[OK] {info['rgbd_pairs_written']} synchronized pairs; "
-                  f"{info['odometry_rows']} odom rows; "
-                  f"training labels: {'yes' if info['trainable'] else 'NO'}")
-            groups[split].append((name, info['trainable']))
+            if args.rhe:
+                diagnostic_dir = args.output / 'rhe' / name
+                segments, summary = generate_rhe(bag, args, diagnostic_dir)
+                try:
+                    for i, segment in enumerate(segments):
+                        clip_name = f'{name}__clip{i:03d}'
+                        try:
+                            info = convert_bag(bag, args.output / split / clip_name, args, None, segment)
+                        except InsufficientFramesError as exc:
+                            # A sufficiently long labeled run can still lack six
+                            # images before its future cutoff. Nothing is published.
+                            summary['skipped_clips'].append(dict(name=clip_name, reason=str(exc)))
+                            continue
+                        groups[split].append((clip_name, True))
+                        summary['exported_clips'].append(dict(
+                            name=clip_name, start=segment[0]['timestamp'], end=segment[-1]['timestamp'],
+                            duration_s=(segment[-1]['timestamp_ns']-segment[0]['timestamp_ns'])/1e9,
+                            image_frames=info['rgbd_pairs_written']))
+                finally:
+                    summary['exported_clip_count'] = len(summary['exported_clips'])
+                    summary['exported_duration_s'] = sum(c['duration_s'] for c in summary['exported_clips'])
+                    atomic_write_text(diagnostic_dir / 'summary.json', json.dumps(summary, indent=2) + '\n')
+                    print('[RHE]', json.dumps(summary, indent=2))
+                if args.require_labels and not summary['exported_clips']:
+                    raise ValueError('No RHE clips have complete labels, image history and future coverage')
+            else:
+                info = convert_bag(bag, target, args, label_file)
+                print(f"[OK] {info['rgbd_pairs_written']} synchronized pairs; "
+                      f"{info['odometry_rows']} odom rows; "
+                      f"training labels: {'yes' if info['trainable'] else 'NO'}")
+                groups[split].append((name, info['trainable']))
         except Exception as exc:
             print(f'[ERROR] {bag.name}: {exc}', file=sys.stderr)
             errors.append(f'{bag.name}: {exc}')
@@ -92,14 +119,17 @@ def _run_convert(args) -> None:
             writer.writerow(['bag'])
             writer.writerows([[name] for name in sorted(set(existing + names))])
             atomic_write_text(destination, text.getvalue())
-    print(f'\nConverted {sum(len(x) for x in groups.values())}/{len(bags)} recordings. Errors: {len(errors)}')
+    print(f'\nExported {sum(len(x) for x in groups.values())} recordings/clips from {len(bags)} bags. Errors: {len(errors)}')
     if errors:
         for err in errors:
             print(' -', err)
         raise SystemExit(1)
     if all(not label_ready for records in groups.values() for _, label_ready in records):
-        print('No supervised labels supplied: inference data is ready; training is NOT ready.')
-        print('Create one <bag_name>.csv per bag with timestamp,mu,nu in --labels-dir to enable training.')
+        if args.rhe:
+            print('No training clips exported. Inspect the per-bag rhe/*/summary.json; no invalid labels were filled.')
+        else:
+            print('No supervised labels supplied: inference data is ready; training is NOT ready.')
+            print('Create one <bag_name>.csv per bag with timestamp,mu,nu in --labels-dir to enable training.')
 
 
 def run_inspect(args) -> None:
@@ -221,6 +251,15 @@ def main():
                    help='Used if no manifest row exists; defaults to inference')
     p.add_argument('--include-excluded', action='store_true')
     p.add_argument('--labels-dir', type=Path, help='Directory of <bag_name>.csv files with timestamp,mu,nu')
+    p.add_argument('--rhe', action='store_true', help='Estimate labels and export only continuous supervised clips')
+    p.add_argument('--rhe-horizon-seconds', type=float, default=3.)
+    p.add_argument('--max-cmd-age', type=float, default=.15, help='Maximum held command age anywhere in an interval')
+    p.add_argument('--rhe-max-speed', type=float, default=1., help='Absolute observed linear/pose speed limit, m/s')
+    p.add_argument('--rhe-max-yaw-rate', type=float, default=1.5, help='Absolute observed yaw/pose rate limit, rad/s')
+    p.add_argument('--rhe-max-position-error', type=float, default=.05,
+                   help='Maximum adjacent XY displacement minus integrated measured twist, m')
+    p.add_argument('--rhe-max-heading-error', type=float, default=.10,
+                   help='Maximum adjacent yaw change minus integrated measured yaw rate, rad')
     p.add_argument('--require-labels', action='store_true', help='Fail if any included bag lacks labels')
     p.add_argument('--max-label-gap', type=float, default=0.11)
     p.add_argument('--odom-topic', default=ODOM_TOPIC)
@@ -253,6 +292,18 @@ def main():
     p.set_defaults(func=run_make_npz)
 
     args = parser.parse_args()
+    if getattr(args, 'rhe', False):
+        if args.labels_dir or args.odom_topic != ODOM_TOPIC:
+            parser.error('--rhe uses /rover/odom and cannot be combined with --labels-dir')
+        if args.future_seconds == 0:
+            args.future_seconds = 30.
+        if args.future_seconds < 30 or args.min_frames < 6:
+            parser.error('--rhe requires >=30 future seconds and >=6 image frames')
+    for name in ('rhe_horizon_seconds', 'max_cmd_age', 'rhe_max_speed', 'rhe_max_yaw_rate',
+                 'rhe_max_position_error', 'rhe_max_heading_error'):
+        value = getattr(args, name, 1.)
+        if not np.isfinite(value) or value <= 0:
+            parser.error(f'--{name.replace("_", "-")} must be finite and > 0')
     if getattr(args, 'frame_step', 1) < 1 or getattr(args, 'pixel_step', 1) < 1:
         parser.error('--frame-step and --pixel-step must be >=1')
     try:
