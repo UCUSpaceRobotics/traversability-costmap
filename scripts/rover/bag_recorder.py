@@ -9,7 +9,7 @@ started from the laptop by scripts/record_bag.sh, but it also works on its own:
     bag_recorder.py record --ride-type flat --speed 0.8 --index 2 --duration 5m
     bag_recorder.py summary [BAG]                                 # message counts vs. expected (newest bag by default)
     bag_recorder.py list                                          # bags in the output directory
-    bag_recorder.py path [BAG]                                    # absolute path of a bag (newest by default)
+    bag_recorder.py path [BAG...] [--all] [--size]                # absolute paths of bags (newest by default)
     bag_recorder.py stop                                          # stop a running recording, e.g. after an ssh drop
 
 `record` runs the pre-flight checks first (topic exists with the right type, has publishers, rate close
@@ -667,7 +667,16 @@ def cmd_list(args: argparse.Namespace, cfg: Config) -> int:
 
 
 def cmd_path(args: argparse.Namespace, cfg: Config) -> int:
-    print(resolve_bag(cfg, args.bag))
+    if args.all:
+        bags = [b.resolve() for b in find_bags(cfg.output_dir)]
+        if bags and running_pid(cfg) is not None:
+            # The newest bag is still being written, skip it
+            print(_c("33", f"[WARN] Skipping {bags[-1].name}: still recording"), file=sys.stderr, flush=True)
+            bags = bags[:-1]
+    else:
+        bags = [resolve_bag(cfg, name) for name in args.bag or [None]]
+    for bag in bags:
+        print(f"{bag}\t{dir_size(bag)}" if args.size else bag, flush=True)
     return EXIT_OK
 
 
@@ -727,8 +736,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = sub.add_parser("list", parents=[common], help="list the bags in the output directory")
     p.set_defaults(func=cmd_list)
 
-    p = sub.add_parser("path", parents=[common], help="print the absolute path of a bag")
-    p.add_argument("bag", nargs="?", help="bag name or path (default: newest bag)")
+    p = sub.add_parser("path", parents=[common], help="print the absolute path of bags, one per line")
+    p.add_argument("bag", nargs="*", help="bag names or paths (default: newest bag)")
+    p.add_argument("--all", action="store_true", help="all finished bags in the output directory, oldest first")
+    p.add_argument("--size", action="store_true", help="also print the size in bytes, tab-separated")
     p.set_defaults(func=cmd_path)
 
     p = sub.add_parser("stop", parents=[common], help="stop a running recording (finalises the bag)")
@@ -743,6 +754,8 @@ def main(argv: list[str] | None = None) -> int:
         cfg = load_config(args.config)
         if args.out_dir:
             cfg = replace(cfg, output_dir=args.out_dir.expanduser())
+        if args.command == "path" and args.all and args.bag:
+            parser.error("path: give bag names or --all, not both")
         if args.command == "record":
             validate_naming(args, cfg, parser)
             if args.monitor_interval is not None:

@@ -29,6 +29,9 @@ COPY_TO=""
 USE_ETH=false
 NO_WIFI=false
 LOCAL=false
+FETCH_ALL=false
+FETCH_LIST=false
+FETCH_FILE=""
 
 success() { echo -e "\e[32m[SUCCESS]\e[0m $1"; }
 warning() { echo -e "\e[33m[WARNING]\e[0m $1"; }
@@ -49,10 +52,15 @@ Commands:
   summary [BAG] Print the summary of a bag on the rover (default: newest).
   list          List the bags on the rover.
   stop          Stop a recording that is still running (e.g. after the ssh connection dropped).
-  fetch [BAG]   Copy a bag from the rover to --copy-to (default: newest bag).
+  fetch [BAG...] Copy bags from the rover to --copy-to (default: newest bag). Bags already
+                fully copied to --copy-to are skipped.
 
 Options:
   --copy-to DIR       record/fetch: copy the bag to DIR on this computer (DIR/<bag>/)
+  --all               fetch: all bags on the rover (except one still recording)
+  --from-file FILE    fetch: also fetch the bags named in FILE (one per line, '#' comments)
+  --list              fetch: only list what would be fetched (with --copy-to: also what is
+                      already copied); nothing is copied
   --config FILE       Recording config (Default: config/recording.yaml)
   --local             Use a container on this computer instead of the rover (e.g. for testing
                       with 'ros2 bag play'); default container: rover_dev
@@ -74,6 +82,10 @@ Examples:
   $0 record --ride-type mixed --speed 0.5
   $0 record --ride-type flat --speed 0.8 --index 2 --duration 5m --copy-to data/raw/2026-10-20_ucu-cinema
   $0 fetch mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch flat_05ms_20261020_100000 mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch --from-file bags.txt --list --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch --all --list --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch --all --copy-to data/raw/2026-10-20_ucu-cinema
 EOF
 }
 
@@ -98,6 +110,9 @@ while [[ "$#" -gt 0 ]]; do
     --copy-to)    need_arg "$1" "$#"; COPY_TO="$2"; shift 2;;
     --config)     need_arg "$1" "$#"; CONFIG="$2"; shift 2;;
     --local)      LOCAL=true; shift;;
+    --all)        FETCH_ALL=true; shift;;
+    --list)       FETCH_LIST=true; shift;;
+    --from-file)  need_arg "$1" "$#"; FETCH_FILE="$2"; shift 2;;
     --eth)        USE_ETH=true; JETSON_IP="${JETSON_ETHERNET_IP}"; shift;;
     --no-wifi|-n) NO_WIFI=true; shift;;
     --user)       need_arg "$1" "$#"; JETSON_USER="$2"; shift 2;;
@@ -122,7 +137,35 @@ done
 
 [[ -f "$CONFIG" ]] || error "Config not found: ${CONFIG}"
 [[ -z "$COPY_TO" || "$COMMAND" == record || "$COMMAND" == fetch ]] || error "--copy-to works only with record and fetch."
-[[ -n "$COPY_TO" || "$COMMAND" != fetch ]] || error "fetch requires --copy-to DIR."
+if [[ "$COMMAND" != fetch ]] && { $FETCH_ALL || $FETCH_LIST || [[ -n "$FETCH_FILE" ]]; }; then
+  error "--all, --list and --from-file work only with fetch."
+fi
+[[ -n "$COPY_TO" || "$COMMAND" != fetch ]] || $FETCH_LIST || error "fetch requires --copy-to DIR (or --list)."
+if [[ "$COMMAND" == fetch ]]; then
+  # Bag names: arguments and lines of --from-file
+  names=()
+  for arg in ${RECORDER_ARGS[@]+"${RECORDER_ARGS[@]}"}; do
+    [[ "$arg" != -* ]] || error "Unknown fetch option: '${arg}'."
+    names+=("$arg")
+  done
+  if [[ -n "$FETCH_FILE" ]]; then
+    [[ -f "$FETCH_FILE" ]] || error "Bag list not found: ${FETCH_FILE}"
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      line="${line%%#*}"
+      read -ra parts <<< "$line"
+      names+=(${parts[@]+"${parts[@]}"})
+    done < "$FETCH_FILE"
+  fi
+  # Drop empty entries, trailing slashes and duplicates (keep the order)
+  RECORDER_ARGS=()
+  for name in ${names[@]+"${names[@]}"}; do
+    name="${name%/}"
+    [[ -n "$name" ]] || continue
+    [[ " ${RECORDER_ARGS[*]-} " == *" ${name} "* ]] || RECORDER_ARGS+=("$name")
+  done
+  ! $FETCH_ALL || [[ "${#RECORDER_ARGS[@]}" -eq 0 ]] || error "fetch: give bag names or --all, not both."
+  [[ -z "$FETCH_FILE" || "${#RECORDER_ARGS[@]}" -gt 0 ]] || error "No bag names in ${FETCH_FILE}."
+fi
 CONTAINER_NAME="${CONTAINER_NAME:-$($LOCAL && echo rover_dev || echo rover_prod)}"
 TARGET="${JETSON_USER}@${JETSON_IP}"
 
@@ -194,18 +237,25 @@ connect() {
   host_run "${exec_prefix} 'cat > ${REMOTE_TMP}/recording.yaml'" < "$CONFIG"
 }
 
-# Copy a bag from the container to COPY_TO. Usage: fetch_bag [BAG]
+human_size() {
+  awk -v b="$1" 'BEGIN { split("B KB MB GB TB", u); i = 1; while (b >= 1024 && i < 5) { b /= 1024; i++ }
+                         printf("%.1f %s", b, u[i]) }'
+}
+
+# Total size in bytes of the files in a local directory (same as the recorder's dir_size); empty if unknown.
+local_size() {
+  python3 -c 'import sys, pathlib; print(sum(f.stat().st_size for f in pathlib.Path(sys.argv[1]).rglob("*") if f.is_file()))' \
+    "$1" 2>/dev/null || true
+}
+
+# Copy one bag from the container to COPY_TO. Usage: copy_bag REMOTE_PATH SIZE
 # Uses rsync through 'docker exec' when the container has it (resumable), otherwise a tar stream.
-fetch_bag() {
-  local remote_path name parent size
-  remote_path=$(host_run "$(recorder_cmd -i path "$@" ${OUT_DIR_ARGS[@]+"${OUT_DIR_ARGS[@]}"})") \
-    || error "Could not find the bag on the rover."
+copy_bag() {
+  local remote_path="$1" size="$2" name parent
   name="$(basename "$remote_path")"
   parent="$(dirname "$remote_path")"
   mkdir -p "$COPY_TO"
-  size=$(host_run "docker exec $(printf '%q' "$CONTAINER_NAME") du -sb $(printf '%q' "$remote_path")" | cut -f1 || true)
-  size="${size:-0}"
-  step "Copying ${name} ($(( size / 1024 / 1024 )) MB) to ${COPY_TO}/..."
+  step "Copying ${name} ($(human_size "$size")) to ${COPY_TO}/..."
 
   if ! $LOCAL && command -v rsync > /dev/null \
       && host_run "docker exec $(printf '%q' "$CONTAINER_NAME") sh -c 'command -v rsync'" > /dev/null 2>&1; then
@@ -225,6 +275,59 @@ fetch_bag() {
   success "Bag copied to ${COPY_TO}/${name}"
 }
 
+# Fetch bags to COPY_TO (or only list them with --list). Usage: fetch_bags [BAG...]
+# No names: the newest bag, or all bags with --all.
+fetch_bags() {
+  local listing
+  local path_args=(path --size)
+  $FETCH_ALL && path_args+=(--all)
+  listing=$(host_run "$(recorder_cmd -i "${path_args[@]}" "$@" ${OUT_DIR_ARGS[@]+"${OUT_DIR_ARGS[@]}"})") \
+    || error "Could not find the bag(s) on the rover."
+  [[ -n "$listing" ]] || { warning "No bags to fetch on the rover."; return 0; }
+
+  local paths=() sizes=() states=() path size name local_bytes state width=0
+  while IFS=$'\t' read -r path size; do
+    [[ -n "$path" ]] || continue
+    name="$(basename "$path")"
+    if [[ -z "$COPY_TO" || ! -d "${COPY_TO}/${name}" ]]; then
+      states+=(new)
+    else
+      local_bytes="$(local_size "${COPY_TO}/${name}")"
+      if [[ "$local_bytes" == "$size" ]]; then states+=(copied); else states+=(partial); fi
+    fi
+    paths+=("$path"); sizes+=("$size")
+    (( ${#name} > width )) && width=${#name}
+  done <<< "$listing"
+
+  local i n_todo=0 todo_bytes=0
+  for i in "${!paths[@]}"; do
+    [[ "${states[i]}" == copied ]] || { n_todo=$((n_todo + 1)); todo_bytes=$((todo_bytes + sizes[i])); }
+  done
+
+  if $FETCH_LIST; then
+    step "Bags to fetch$([[ -n "$COPY_TO" ]] && echo " to ${COPY_TO}/"):"
+    for i in "${!paths[@]}"; do
+      case "${states[i]}" in
+        new)     state="\e[32mnew\e[0m";;
+        partial) state="\e[33mpartial, will be re-copied\e[0m";;
+        copied)  state="\e[90malready copied, skip\e[0m";;
+      esac
+      printf "  %-${width}s  %10s  %b\n" "$(basename "${paths[i]}")" "$(human_size "${sizes[i]}")" "$state"
+    done
+    echo -e "\n${n_todo} of ${#paths[@]} bag(s) to fetch, $(human_size "$todo_bytes")."
+    return 0
+  fi
+
+  for i in "${!paths[@]}"; do
+    if [[ "${states[i]}" == copied ]]; then
+      echo "Skipping $(basename "${paths[i]}"): already copied to ${COPY_TO}/"
+    else
+      copy_bag "${paths[i]}" "${sizes[i]}"
+    fi
+  done
+  (( ${#paths[@]} == 1 )) || success "Fetched ${n_todo} bag(s) ($(human_size "$todo_bytes")), skipped $(( ${#paths[@]} - n_todo )) already copied."
+}
+
 # ==========================================
 # MAIN
 # ==========================================
@@ -232,7 +335,7 @@ fetch_bag() {
 connect
 
 if [[ "$COMMAND" == fetch ]]; then
-  fetch_bag ${RECORDER_ARGS[@]+"${RECORDER_ARGS[@]}"}
+  fetch_bags ${RECORDER_ARGS[@]+"${RECORDER_ARGS[@]}"}
   exit 0
 fi
 
@@ -243,7 +346,7 @@ host_run_tty "$(recorder_cmd "$DOCKER_TTY" "$COMMAND" \
 if [[ "$COMMAND" == record && -n "$COPY_TO" ]]; then
   # 0 = recorded, 2 = recorded with a summary that shows problems; otherwise nothing was recorded
   if [[ "$rc" -eq 0 || "$rc" -eq 2 ]]; then
-    fetch_bag
+    fetch_bags
   else
     warning "No bag was recorded, nothing to copy."
   fi
