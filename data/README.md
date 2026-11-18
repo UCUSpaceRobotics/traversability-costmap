@@ -115,6 +115,10 @@ scripts/record_bag.sh record --ride-type flat --speed 0.8 --index 2 --duration 5
 scripts/record_bag.sh list                                                   # bags on the rover
 scripts/record_bag.sh summary mixed_05ms_20261020_101500                     # summary of a bag on the rover
 scripts/record_bag.sh fetch --copy-to data/raw/2026-10-20_ucu-cinema         # copy the newest bag
+scripts/record_bag.sh fetch flat_05ms_20261020_100000 mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema  # several bags
+scripts/record_bag.sh fetch --from-file bags.txt --copy-to data/raw/2026-10-20_ucu-cinema  # bags listed in a file, one per line
+scripts/record_bag.sh fetch --all --list --copy-to data/raw/2026-10-20_ucu-cinema  # show what --all would copy
+scripts/record_bag.sh fetch --all --copy-to data/raw/2026-10-20_ucu-cinema   # copy all bags not copied yet
 scripts/record_bag.sh stop                                                   # stop a recording left running after an ssh drop
 scripts/record_bag.sh --help                                                 # all options
 ```
