@@ -1301,9 +1301,18 @@ def write_indexes() -> None:
 
 
 # --- Main -----------------------------------------------------------------------
+class MissingBagFiles(Exception):
+    """The bag's data files are not present locally (e.g. not downloaded yet)."""
+
+
 def process(bag: BagRef, n_previews: int, frame_stats: bool, manifest_row: dict | None) -> tuple[str, str]:
     t_start = time.time()
-    raw = read_bag(bag, n_previews, frame_stats)
+    try:
+        raw = read_bag(bag, n_previews, frame_stats)
+    except Exception as e:
+        if "database files are missing" in str(e):
+            raise MissingBagFiles(str(e).split(": ", 1)[-1]) from None
+        raise
     a = analyze(bag, raw, manifest_row)
     a["timing_raw"] = {n: td.recv for n, td in raw["topics"].items()}
     plots = {
@@ -1358,6 +1367,8 @@ def main() -> None:
                 try:
                     status, took = fut.result()
                     print(f"  {STATUS_ICON[status]} {b.session}/{b.name} ({took})")
+                except MissingBagFiles:
+                    print(f"  – {b.session}/{b.name}: skipped, bag files are absent (run scripts/sync_data.py)")
                 except Exception:
                     failed.append(b)
                     print(f"  ✗ {b.session}/{b.name}: report failed\n{traceback.format_exc()}")
@@ -1367,6 +1378,8 @@ def main() -> None:
             try:
                 status, took = process(*ta)
                 print(f"  {STATUS_ICON[status]} {b.session}/{b.name} ({took})")
+            except MissingBagFiles:
+                print(f"  – {b.session}/{b.name}: skipped, bag files are absent (run scripts/sync_data.py)")
             except Exception:
                 failed.append(b)
                 print(f"  ✗ {b.session}/{b.name}: report failed\n{traceback.format_exc()}")
