@@ -144,6 +144,7 @@ location: UCU Cinema
 environment: indoor              # indoor / outdoor
 lighting: artificial, constant
 surface: flat compacted soil floor with small bumps, scattered single stones and one stony area
+rover_code_commit: https://github.com/UCUSpaceRobotics/indomitus-rover-core/commit/<commit-hash>
 zed_config: zed2i_record.yaml
 notes: |
   - Anything unusual about the recording: gaps, broken topics, sensors that misbehaved.

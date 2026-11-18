@@ -15,3 +15,15 @@ flat_08ms_1_20261019_162037,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,2
 flat_05ms_2_20261019_170000,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,349,651,train,
 flat_08ms_2_20261019_170619,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,239,433,train,
 mixed_05ms_3_20261019_171040,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,400,763,train,
+mixed_outdoor_08ms_1_20261115_133726,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,281,662,exclude,cmd_vel clamped to 0.8
+mixed_outdoor_08ms_2_20261115_134339,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,195,458,train,cmd_vel clamped to 0.8; ZED odometry path 27% shorter than wheels
+mixed_outdoor_08ms_3_20261115_135839,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,545,1373,train,cmd_vel clamped to 0.8
+mixed_outdoor_08ms_4_20261115_140803,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,434,1095,train,cmd_vel clamped to 0.8
+road_outdoor_10ms_1_20261115_125625,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,295,678,train,
+road_outdoor_10ms_2_20261115_131245,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,356,837,train,
+mixed_outdoor_08ms_1_20261115_133726,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,281,611,exclude,raw cmd_vel (not clamped) - see session.yaml
+mixed_outdoor_08ms_2_20261115_134339,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,195,424,exclude,raw cmd_vel (not clamped) - see session.yaml
+mixed_outdoor_08ms_3_20261115_135839,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,545,1277,exclude,raw cmd_vel (not clamped) - see session.yaml
+mixed_outdoor_08ms_4_20261115_140803,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,434,1021,exclude,raw cmd_vel (not clamped) - see session.yaml
+road_outdoor_10ms_1_20261115_125625,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,295,679,exclude,same as the train bag
+road_outdoor_10ms_2_20261115_131245,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,356,837,exclude,same as the train bag

@@ -7,7 +7,7 @@ output_dir: /opt/ws/bags
 
 # Bag naming, see data/README.md:  <ride_type>_<speed>ms[_<index>]_<YYYYMMDD>_<HHMMSS>  (UTC)
 naming:
-  ride_types: [test, flat, singlestones, mixed]
+  ride_types: [test, flat, singlestones, mixed, road_outdoor, mixed_outdoor]
   ride_types_without_speed: [test]     # these get no speed part, e.g. test_20261017_162047
 
 # Passed to `ros2 bag record`.
@@ -19,7 +19,7 @@ record:
 
 checks:
   discovery_timeout: 5.0       # s to wait until every topic has a publisher
-  rate_window: 5.0             # s to measure message rates before recording
+  rate_window: 7.0             # s to measure message rates before recording
   rate_tolerance: 0.3          # allowed relative deviation from the expected rate (default for every topic)
   monitor_interval: 10.0       # s between checks during recording; 0 = no monitoring
   count_tolerance: 0.1         # allowed relative deviation of message count from rate * duration in the summary
@@ -42,6 +42,6 @@ topics:
   /rover/wheels/odom:                                  {type: nav_msgs/msg/Odometry, rate: 100}
   /rover/odom:                                         {type: nav_msgs/msg/Odometry, rate: 20}
   /rover/joint_states:                                 {type: sensor_msgs/msg/JointState, rate: 100}
-  /rover/cmd_vel:                                      {type: geometry_msgs/msg/Twist, rate: 50, required: false}
+  /rover/cmd_vel:                                      {type: geometry_msgs/msg/Twist, rate: 20, required: false}
   /tf:                                                 {type: tf2_msgs/msg/TFMessage, rate: 220, tolerance: 0.15}
   /tf_static:                                          {type: tf2_msgs/msg/TFMessage, latched: true}
