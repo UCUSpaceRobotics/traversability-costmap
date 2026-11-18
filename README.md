@@ -65,7 +65,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt          # preprocessing deps; install PyTorch separately (CUDA/ROCm)
 
 # 2. Data and pretrained weights
-python scripts/download_data.py          # see data/README.md for options
+python scripts/sync_data.py download          # see data/README.md for options
 scripts/download_weights.sh              # -> pretrained/wayfaster_best.ckpt
 
 # 3. Convert one bag to a 6-frame inference clip

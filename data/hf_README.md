@@ -59,7 +59,7 @@ Bag names follow `<ride_type>_<speed>[_<index>]_<YYYYMMDD>_<HHMMSS>`, for exampl
 
 ## Download
 
-With the code repo, use [scripts/download_data.py](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/scripts/download_data.py). It selects bags by split, session or ride type from the manifest.
+With the code repo, use [scripts/sync_data.py](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/scripts/sync_data.py). It selects bags by split, session or ride type from the manifest.
 
 Without it, use the `hf` CLI:
 

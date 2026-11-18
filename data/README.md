@@ -51,16 +51,16 @@ Paste your token which you can generate by going to [https://huggingface.co/](ht
 
 ### Download
 
-Bags are not stored in git. Use [scripts/download_data.py](../scripts/download_data.py) to fetch them into `data/raw/`:
+Bags are not stored in git. Use [scripts/sync_data.py](../scripts/sync_data.py) to fetch them into `data/raw/`:
 
 ```bash
-python scripts/download_data.py                                  # all train + val bags
-python scripts/download_data.py --split val                      # only validation bags
-python scripts/download_data.py --session 2026-10-17_ucu-cinema  # one session
-python scripts/download_data.py --ride-type mixed                # one ride type
-python scripts/download_data.py --bag flat_05ms_20261017_162915  # one bag
-python scripts/download_data.py --revision v0.1                  # pinned dataset version
-python scripts/download_data.py --dry-run                        # list only, no download
+python scripts/sync_data.py download                                  # all train + val bags
+python scripts/sync_data.py download --split val                      # only validation bags
+python scripts/sync_data.py download --session 2026-10-17_ucu-cinema  # one session
+python scripts/sync_data.py download --ride-type mixed                # one ride type
+python scripts/sync_data.py download --bag flat_05ms_20261017_162915  # one bag
+python scripts/sync_data.py download --revision v0.1                  # pinned dataset version
+python scripts/sync_data.py download --dry-run                        # list only, no download
 ```
 
 Filters can be repeated and combined. Bags with `split=exclude`, such as `test` rides, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped.
@@ -226,7 +226,7 @@ ucu-space-robotics/traversability-costmap/
             └── <bag>_0.mcap
 ```
 
-The YAML files on the Hub are copies of the ones in git, and they can be out of date. The git versions are the up-to-date ones, so [scripts/download_data.py](../scripts/download_data.py) downloads only the `.mcap` files.
+The YAML files on the Hub are copies of the ones in git, and they can be out of date. The git versions are the up-to-date ones, so [scripts/sync_data.py](../scripts/sync_data.py) downloads only the `.mcap` files.
 
 The dataset card is kept in [hf_README.md](hf_README.md). After you change it, upload it:
 
