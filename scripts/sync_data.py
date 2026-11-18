@@ -4,6 +4,9 @@
 Bags are selected from data/manifest.csv. The first argument is required:
   download  copy the selected bags from the Hub into data/raw/
   upload    send the selected bags from data/raw/ to the Hub (one commit)
+  delete    delete the local .mcap files of the selected bags (the git-ignored part); metadata.yaml,
+            session.yaml and the Hub are not touched. Bags with split=exclude are included.
+            Needs a filter (--bag / --session / --split / --ride-type) or --all; asks for confirmation (--yes skips it)
 The Hugging Face dataset repo has the same layout as data/: raw/<session>/<bag>/.
 Only .mcap files are downloaded: metadata.yaml and session.yaml are tracked in git
 Files that are already downloaded are skipped.
@@ -20,6 +23,10 @@ Usage examples (run from anywhere inside the repo):
     python scripts/sync_data.py download --bag 20261017_162915_v0p5
     python scripts/sync_data.py download --revision v0.1                          # exact dataset version
     python scripts/sync_data.py download --dry-run                                # show which files would be downloaded/skipped
+
+    python scripts/sync_data.py delete --bag 20261017_162915_v0p5 --bag 20261017_163716_v0p5
+    python scripts/sync_data.py delete --session 2026-10-17_ucu-cinema --dry-run   # list what would be deleted
+    python scripts/sync_data.py delete --all --yes                                # every local bag, including exclude
 
     python scripts/sync_data.py upload --session 2026-11-15_stryiskiy-park --session 2026-11-15_stryiskiy-park-raw
     python scripts/sync_data.py upload --bag 20261017_162915_v0p5 --commit-message "add bag"
@@ -49,7 +56,7 @@ RAW_DIR = DATA_DIR / "raw"
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("mode", choices=["download", "upload"], help="download from the Hub or upload to it")
+    p.add_argument("mode", choices=["download", "upload", "delete"], help="download from the Hub, upload to it, or delete local .mcap files")
     p.add_argument("--split", action="append", help="train / val (repeatable)")
     p.add_argument("--session", action="append", help="session folder name (repeatable)")
     p.add_argument("--ride-type", action="append", help="ride type, e.g. stonepath (repeatable)")
@@ -57,6 +64,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--commit-message", help="commit message for upload")
     p.add_argument("--revision", default=DEFAULT_REVISION, help=f"dataset tag/branch/commit (default: {DEFAULT_REVISION})")
     p.add_argument("--include-excluded", action="store_true", help="also download bags with split=exclude")
+    p.add_argument("--all", action="store_true", help="delete: select every bag in the manifest (including exclude)")
+    p.add_argument("--yes", action="store_true", help="delete: do not ask for confirmation")
     p.add_argument("--no-verify", action="store_true", help="skip sha256 check")
     p.add_argument("--dry-run", action="store_true", help="compare with the Hub and print what would be downloaded/uploaded, without doing it")
     return p.parse_args()
@@ -69,7 +78,7 @@ def select_bags(args: argparse.Namespace) -> list[dict]:
         rows = list(csv.DictReader(f))
 
     def keep(r: dict) -> bool:
-        if r["split"] == "exclude" and not args.include_excluded and not args.bag and not (args.mode == "upload"):
+        if r["split"] == "exclude" and not args.include_excluded and not args.bag and args.mode == "download":
             return False
         return (
             (not args.split or r["split"] in args.split)
@@ -230,11 +239,39 @@ def upload(rows: list[dict], args: argparse.Namespace) -> None:
     print(f"Uploaded: {commit}")
 
 
+def delete_local(rows: list[dict], args: argparse.Namespace) -> None:
+    """Delete the local .mcap files of the selected bags."""
+    files = sorted(f for r in rows for f in (RAW_DIR / r["session"] / r["bag"]).glob("*.mcap"))
+    if not files:
+        print("No local .mcap files for the selected bags.")
+        return
+    total = sum(f.stat().st_size for f in files)
+    for f in files:
+        print(f"  {f.relative_to(RAW_DIR).as_posix()} ({fmt_mb(f.stat().st_size)})")
+    print(f"\n{len(files)} files, {fmt_mb(total)}")
+    if args.dry_run:
+        print("Dry run: nothing was deleted.")
+        return
+    if not args.yes and input("Delete these files? [y/N] ").strip().lower() != "y":
+        print("Aborted.")
+        return
+    for f in files:
+        f.unlink()
+    print("Deleted.")
+
+
 def main() -> None:
     args = parse_args()
+    if args.mode == "delete" and not (args.all or args.bag or args.session or args.split or args.ride_type):
+        sys.exit("delete needs a filter (--bag / --session / --split / --ride-type) or --all.")
     rows = select_bags(args)
     if not rows:
         sys.exit("No bags match the given filters.")
+
+    if args.mode == "delete":
+        print(f"Local bags selected for deletion: {len(rows)}")
+        delete_local(rows, args)
+        return
 
     total_mb = sum(float(r.get("size_mb") or 0) for r in rows)
     print(f"Dataset {HF_REPO_ID} @ {args.revision} ({'upload' if (args.mode == "upload") else 'download'}): {len(rows)} bags, ~{total_mb:.0f} MB")
