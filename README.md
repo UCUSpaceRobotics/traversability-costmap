@@ -70,16 +70,16 @@ scripts/download_weights.sh              # -> pretrained/wayfaster_best.ckpt
 
 # 3. Convert one bag to a 6-frame inference clip
 python preprocessing/preprocess_wayfaster.py convert \
-  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
+  --input data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5 \
   --output wayfaster/dataset/rover --split inference --tf-policy prefer-dynamic
 python preprocessing/preprocess_wayfaster.py make-npz \
-  --recording wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__flat_05ms_1_20261019_152249 \
+  --recording wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__20261019_152249_v0p5 \
   --config wayfaster/configs/temporal_model.yaml --index 0 \
-  --output wayfaster/prepared/flat_05ms_clip0.npz
+  --output wayfaster/prepared/20261019_152249_v0p5_clip0.npz
 
 # 4. Predict
 python scripts/infer_wayfaster.py \
-  --input-npz wayfaster/prepared/flat_05ms_clip0.npz --output-dir out/flat_05ms
+  --input-npz wayfaster/prepared/20261019_152249_v0p5_clip0.npz --output-dir out/20261019_152249_v0p5
 ```
 
 `infer_wayfaster.py` expects weights-only checkpoint `wayfaster/pretrained/wayfaster_weights_only.pt` by default; pass `--checkpoint` to override. The TF policy is an explicit choice, see the preprocessing README before picking one.

@@ -1,29 +1,29 @@
 bag,session,ride_type,terrain,max_speed_ms,duration_s,size_mb,split,notes
-test_20261017_162047,2026-10-17_ucu-cinema,test,ground,,29,31,exclude,setup check
-flat_05ms_20261017_162915,2026-10-17_ucu-cinema,flat,ground;bumps;stones,0.5,178,196,train,
-mixed_05ms_1_20261017_163716,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.5,299,395,train,
-singlestones_05ms_20261017_164442,2026-10-17_ucu-cinema,singlestones,ground;bumps;stones,0.5,239,296,train,
-mixed_05ms_2_20261017_164938,2026-10-17_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,239,316,train,
-mixed_03ms_20261017_170424,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.3,199,272,train,
-mixed_08ms_20261017_171002,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.8,199,250,train,
-test_20261019_143330,2026-10-19_ucu-cinema,test,ground,,219,373,exclude,setup check
-flat_05ms_1_20261019_152249,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,298,510,train,
-mixed_05ms_1_20261019_153122,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,364,664,train,
-mixed_03ms_20261019_154946,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.3,263,509,train,
-mixed_05ms_2_20261019_160254,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,306,543,train,
-flat_08ms_1_20261019_162037,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,273,460,train,
-flat_05ms_2_20261019_170000,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,349,651,train,
-flat_08ms_2_20261019_170619,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,239,433,train,
-mixed_05ms_3_20261019_171040,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,400,763,train,
-mixed_outdoor_08ms_1_20261115_133726,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,281,662,exclude,cmd_vel clamped to 0.8
-mixed_outdoor_08ms_2_20261115_134339,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,195,458,train,cmd_vel clamped to 0.8; ZED odometry path 27% shorter than wheels
-mixed_outdoor_08ms_3_20261115_135839,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,545,1373,train,cmd_vel clamped to 0.8
-mixed_outdoor_08ms_4_20261115_140803,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,434,1095,train,cmd_vel clamped to 0.8
-road_outdoor_10ms_1_20261115_125625,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,295,678,train,
-road_outdoor_10ms_2_20261115_131245,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,356,837,train,
-mixed_outdoor_08ms_1_20261115_133726,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,281,611,exclude,raw cmd_vel (not clamped) - see session.yaml
-mixed_outdoor_08ms_2_20261115_134339,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,195,424,exclude,raw cmd_vel (not clamped) - see session.yaml
-mixed_outdoor_08ms_3_20261115_135839,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,545,1277,exclude,raw cmd_vel (not clamped) - see session.yaml
-mixed_outdoor_08ms_4_20261115_140803,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,434,1021,exclude,raw cmd_vel (not clamped) - see session.yaml
-road_outdoor_10ms_1_20261115_125625,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,295,679,exclude,same as the train bag
-road_outdoor_10ms_2_20261115_131245,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,356,837,exclude,same as the train bag
+20261017_162047,2026-10-17_ucu-cinema,test,ground,,29,31,exclude,setup check
+20261017_162915_v0p5,2026-10-17_ucu-cinema,flat,ground;bumps;stones,0.5,178,196,train,
+20261017_163716_v0p5,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.5,299,395,train,
+20261017_164442_v0p5,2026-10-17_ucu-cinema,singlestones,ground;bumps;stones,0.5,239,296,train,
+20261017_164938_v0p5,2026-10-17_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,239,316,train,
+20261017_170424_v0p3,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.3,199,272,train,
+20261017_171002_v0p8,2026-10-17_ucu-cinema,mixed,ground;bumps;stony_area,0.8,199,250,train,
+20261019_143330,2026-10-19_ucu-cinema,test,ground,,219,373,exclude,setup check
+20261019_152249_v0p5,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,298,510,train,
+20261019_153122_v0p5,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,364,664,train,
+20261019_154946_v0p3,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.3,263,509,train,
+20261019_160254_v0p5,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,306,543,train,
+20261019_162037_v0p8,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,273,460,train,
+20261019_170000_v0p5,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.5,349,651,train,
+20261019_170619_v0p8,2026-10-19_ucu-cinema,flat,ground;bumps;stones,0.8,239,433,train,
+20261019_171040_v0p5,2026-10-19_ucu-cinema,mixed,ground;bumps;stones;stony_area,0.5,400,763,train,
+20261115_133726_v0p8,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,281,662,exclude,cmd_vel clamped to 0.8
+20261115_134339_v0p8,2026-11-15_stryiskiy-park,mixed_outdoor,ground;asphalt;leaves,0.8,195,458,train,cmd_vel clamped to 0.8; ZED odometry path 27% shorter than wheels
+20261115_135839_v0p8,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,545,1373,train,cmd_vel clamped to 0.8
+20261115_140803_v0p8,2026-11-15_stryiskiy-park,mixed_outdoor,leaves,0.8,434,1095,train,cmd_vel clamped to 0.8
+20261115_125625_v1p0,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,295,678,train,
+20261115_131245_v1p0,2026-11-15_stryiskiy-park,road_outdoor,ground;asphalt;leaves,1.0,356,837,train,
+20261115_133726_v0p8,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,281,611,exclude,raw cmd_vel (not clamped) - see session.yaml
+20261115_134339_v0p8,2026-11-15_stryiskiy-park-raw,mixed_outdoor,ground;asphalt;leaves,0.8,195,424,exclude,raw cmd_vel (not clamped) - see session.yaml
+20261115_135839_v0p8,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,545,1277,exclude,raw cmd_vel (not clamped) - see session.yaml
+20261115_140803_v0p8,2026-11-15_stryiskiy-park-raw,mixed_outdoor,leaves,0.8,434,1021,exclude,raw cmd_vel (not clamped) - see session.yaml
+20261115_125625_v1p0,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,295,679,exclude,same as the train bag
+20261115_131245_v1p0,2026-11-15_stryiskiy-park-raw,road_outdoor,ground;asphalt;leaves,1.0,356,837,exclude,same as the train bag

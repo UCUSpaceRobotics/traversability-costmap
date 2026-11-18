@@ -17,12 +17,12 @@ Usage examples (run from anywhere inside the repo):
     python scripts/sync_data.py download --split val                             # only validation bags
     python scripts/sync_data.py download --session 2026-10-17_ucu-cinema
     python scripts/sync_data.py download --ride-type stonepath --ride-type flat
-    python scripts/sync_data.py download --bag flat_05ms_20261017_162915
+    python scripts/sync_data.py download --bag 20261017_162915_v0p5
     python scripts/sync_data.py download --revision v0.1                          # exact dataset version
     python scripts/sync_data.py download --dry-run                                # show which files would be downloaded/skipped
 
     python scripts/sync_data.py upload --session 2026-11-15_stryiskiy-park --session 2026-11-15_stryiskiy-park-raw
-    python scripts/sync_data.py upload --bag flat_05ms_20261017_162915 --commit-message "add bag"
+    python scripts/sync_data.py upload --bag 20261017_162915_v0p5 --commit-message "add bag"
     python scripts/sync_data.py upload --session 2026-11-15_stryiskiy-park --dry-run   # show which files would be new/changed/unchanged
 
 Requires: pip install huggingface_hub, then `hf auth login` (a read token is enough for download,

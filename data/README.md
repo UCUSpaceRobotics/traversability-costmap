@@ -58,7 +58,7 @@ python scripts/sync_data.py download                                  # all trai
 python scripts/sync_data.py download --split val                      # only validation bags
 python scripts/sync_data.py download --session 2026-10-17_ucu-cinema  # one session
 python scripts/sync_data.py download --ride-type mixed                # one ride type
-python scripts/sync_data.py download --bag flat_05ms_20261017_162915  # one bag
+python scripts/sync_data.py download --bag 20261017_162915_v0p5  # one bag
 python scripts/sync_data.py download --revision v0.1                  # pinned dataset version
 python scripts/sync_data.py download --dry-run                        # list only, no download
 ```
@@ -72,7 +72,7 @@ Use the `hf` CLI directly. The Hub repo has the same layout as `data/` (see [Hug
 ```bash
 hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "*.mcap"                                     # all bags
 hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/2026-10-19_ucu-cinema/*.mcap"           # one session
-hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/*/flat_05ms_1_20261019_152249/*.mcap"   # one bag
+hf download ucu-space-robotics/traversability-costmap --repo-type dataset --local-dir data --include "raw/*/20261019_152249_v0p5/*.mcap"   # one bag
 ```
 
 ## Bag reports
@@ -89,7 +89,7 @@ hf download ucu-space-robotics/traversability-costmap --repo-type dataset --loca
 ```bash
 python scripts/generate_bags_report.py                                  # all bags in data/raw/
 python scripts/generate_bags_report.py --session 2026-10-17_ucu-cinema  # one session
-python scripts/generate_bags_report.py --bag flat_05ms_20261017_162915  # one bag (name or path)
+python scripts/generate_bags_report.py --bag 20261017_162915_v0p5  # one bag (name or path)
 python scripts/generate_bags_report.py --skip-existing --jobs 4         # only new bags, in parallel
 python scripts/generate_bags_report.py --index-only                     # only rebuild the index pages
 ```
@@ -109,13 +109,13 @@ The bag name follows the [naming convention](#bag-naming). The topics, expected 
 
 ```bash
 scripts/record_bag.sh check                                                  # pre-flight checks only
-scripts/record_bag.sh record --ride-type mixed --speed 0.5                   # until Ctrl+C
-scripts/record_bag.sh record --ride-type flat --speed 0.8 --index 2 --duration 5m \
+scripts/record_bag.sh record --speed 0.5                                      # until Ctrl+C
+scripts/record_bag.sh record --speed 0.8 --duration 5m \
     --copy-to data/raw/2026-10-20_ucu-cinema                                 # stop after 5 min, copy to the laptop
 scripts/record_bag.sh list                                                   # bags on the rover
-scripts/record_bag.sh summary mixed_05ms_20261020_101500                     # summary of a bag on the rover
+scripts/record_bag.sh summary 20261020_101500_v0p5                          # summary of a bag on the rover
 scripts/record_bag.sh fetch --copy-to data/raw/2026-10-20_ucu-cinema         # copy the newest bag
-scripts/record_bag.sh fetch flat_05ms_20261020_100000 mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema  # several bags
+scripts/record_bag.sh fetch 20261020_100000_v0p5 20261020_101500_v0p5 --copy-to data/raw/2026-10-20_ucu-cinema  # several bags
 scripts/record_bag.sh fetch --from-file bags.txt --copy-to data/raw/2026-10-20_ucu-cinema  # bags listed in a file, one per line
 scripts/record_bag.sh fetch --all --list --copy-to data/raw/2026-10-20_ucu-cinema  # show what --all would copy
 scripts/record_bag.sh fetch --all --copy-to data/raw/2026-10-20_ucu-cinema   # copy all bags not copied yet
@@ -236,7 +236,7 @@ hf upload ucu-space-robotics/traversability-costmap data/hf_README.md README.md 
 
 ## Ride types
 
-The ride type is the first part of the bag name.
+The ride type is not part of the bag name, because it is not always known when the recording starts. It is set after the ride, in the `ride_type` column of [manifest.csv](manifest.csv).
 
 | Ride type      | Description |
 |----------------|-------------|
@@ -248,20 +248,20 @@ The ride type is the first part of the bag name.
 ## Bag naming
 
 ```
-<ride_type>_<speed>[_<index>]_<YYYYMMDD>_<HHMMSS>
+<YYYYMMDD>_<HHMMSS>[_v<speed>]
 ```
 
-| Part          | Required | Meaning |
-|---------------|----------|---------|
-| `ride_type`   | yes      | One of the ride types above. |
-| `speed`       | yes*     | Maximum speed in tenths of m/s, followed by `ms`: `03ms` = 0.3 m/s, `05ms` = 0.5 m/s, `08ms` = 0.8 m/s. This is the speed with the joystick fully forward. The actual speed may be lower. |
-| `index`       | no       | Number of a repeated recording with the same ride type and speed in one session, starting from 1 (`_1`, `_2`, …). Used only when there is more than one such recording. |
-| `YYYYMMDD`    | yes      | Recording date. |
-| `HHMMSS`      | yes      | Recording start time (UTC+0). |
+| Part       | Required | Meaning |
+|------------|----------|---------|
+| `YYYYMMDD` | yes      | Recording date (UTC+0). |
+| `HHMMSS`   | yes      | Recording start time (UTC+0). |
+| `v<speed>` | yes*     | Maximum speed in m/s, with `p` instead of the decimal point: `v0p3` = 0.3 m/s, `v0p5` = 0.5 m/s, `v0p8` = 0.8 m/s, `v1p0` = 1.0 m/s. This is the speed limit set for the ride (joystick fully forward). The actual speed may be lower. |
 
-\* `test` bags have no speed, e.g. `test_20261017_162047`.
+\* Setup test bags are recorded without `--speed` and have no speed part, e.g. `20261017_162047`.
+
+Bags sort by recording time. The date and time make the name unique, so there is no index. The ride type, terrain and the rest are in [manifest.csv](manifest.csv).
 
 Examples:
-- `flat_05ms_20261017_162915`: flat ride at max 0.5 m/s, recorded 2026-10-17 at 16:29:15
-- `mixed_08ms_20261017_171002`: mixed ride at max 0.8 m/s
-- `mixed_05ms_2_20261019_160254`: second mixed ride at max 0.5 m/s in the 2026-10-19 session
+- `20261017_162915_v0p5`: recorded 2026-10-17 at 16:29:15 with the max speed set to 0.5 m/s
+- `20261115_125625_v1p0`: recorded 2026-11-15 at 12:56:25 with the max speed set to 1.0 m/s
+- `20261017_162047`: setup test, no speed

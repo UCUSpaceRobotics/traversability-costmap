@@ -5,10 +5,8 @@
 # the Jetson, otherwise the bags are lost when the container is re-created (e.g. by a deploy).
 output_dir: /opt/ws/bags
 
-# Bag naming, see data/README.md:  <ride_type>_<speed>ms[_<index>]_<YYYYMMDD>_<HHMMSS>  (UTC)
-naming:
-  ride_types: [test, flat, singlestones, mixed, road_outdoor, mixed_outdoor]
-  ride_types_without_speed: [test]     # these get no speed part, e.g. test_20261017_162047
+# Bag naming, see data/README.md:  <YYYYMMDD>_<HHMMSS>_v<speed>  (UTC), e.g. 20261017_162915_v0p5 for 0.5 m/s.
+# Without --speed the speed part is left out (setup tests), e.g. 20261017_162047.
 
 # Passed to `ros2 bag record`.
 record:

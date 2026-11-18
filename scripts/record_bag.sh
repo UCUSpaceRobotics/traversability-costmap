@@ -79,10 +79,10 @@ All other options are passed to the recorder, see '$0 record --help'.
 
 Examples:
   $0 check
-  $0 record --ride-type mixed --speed 0.5
-  $0 record --ride-type flat --speed 0.8 --index 2 --duration 5m --copy-to data/raw/2026-10-20_ucu-cinema
-  $0 fetch mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema
-  $0 fetch flat_05ms_20261020_100000 mixed_05ms_20261020_101500 --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 record --speed 0.5
+  $0 record --speed 0.8 --duration 5m --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch 20261020_101500_v0p5 --copy-to data/raw/2026-10-20_ucu-cinema
+  $0 fetch 20261020_100000_v0p5 20261020_101500_v0p5 --copy-to data/raw/2026-10-20_ucu-cinema
   $0 fetch --from-file bags.txt --list --copy-to data/raw/2026-10-20_ucu-cinema
   $0 fetch --all --list --copy-to data/raw/2026-10-20_ucu-cinema
   $0 fetch --all --copy-to data/raw/2026-10-20_ucu-cinema

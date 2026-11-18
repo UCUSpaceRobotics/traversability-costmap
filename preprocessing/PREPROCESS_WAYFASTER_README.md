@@ -25,7 +25,7 @@ Run the entrypoint from this repository; do not copy it away from its `src/` mod
 
 ```bash
 python preprocessing/preprocess_wayfaster.py inspect \
-  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249
+  --input data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5
 ```
 
 Inspect the optical frame, odometry parent/child frames, both TF inventories, and the reported static/dynamic discrepancies. The default pose semantics must be `^odom T_base_footprint`, from `/rover/odom`. Selecting another base requires odometry that actually reports that base; changing a flag does not transform the pose.
@@ -55,7 +55,7 @@ Dynamic edges use linear translation interpolation and quaternion SLERP at each 
 
 ```bash
 python preprocessing/preprocess_wayfaster.py convert \
-  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
+  --input data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5 \
   --output wayfaster/dataset/rover \
   --split inference \
   --tf-policy prefer-dynamic \
@@ -69,7 +69,7 @@ wayfaster/dataset/rover/
 └── inference/
     ├── inference_bags.csv
     ├── rosbags.csv                # header-only until labels are supplied
-    └── 2026-10-19_ucu-cinema__flat_05ms_1_20261019_152249/
+    └── 2026-10-19_ucu-cinema__20261019_152249_v0p5/
         ├── images.csv
         ├── states_unlabeled.csv
         ├── preprocessing.json
@@ -115,10 +115,10 @@ Completed recordings carry `schema_version: 2` and `complete: true` in metadata.
 
 ```bash
 python preprocessing/preprocess_wayfaster.py make-npz \
-  --recording wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__flat_05ms_1_20261019_152249 \
+  --recording wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__20261019_152249_v0p5 \
   --config wayfaster/configs/temporal_model.yaml \
   --index 0 \
-  --output wayfaster/prepared/flat_05ms_clip0.npz
+  --output wayfaster/prepared/20261019_152249_v0p5_clip0.npz
 ```
 
 `--index 1` selects the next overlapping window. `--pixel-step 1` matches the original dataloader's dense depth voxelization; a higher step is faster but produces approximate occupancy grids.
@@ -143,8 +143,8 @@ PyTorch/torchvision environment (including ROCm support on the AMD machine):
 
 ```bash
 ROCR_VISIBLE_DEVICES=0 python scripts/infer_wayfaster.py \
-  --input-npz wayfaster/prepared/flat_05ms_clip0.npz \
-  --output-dir /tmp/opencode/flat_05ms-prediction
+  --input-npz wayfaster/prepared/20261019_152249_v0p5_clip0.npz \
+  --output-dir /tmp/opencode/20261019_152249_v0p5-prediction
 ```
 
 Defaults use `wayfaster/configs/temporal_model.yaml` and
@@ -169,7 +169,7 @@ reduced RHE, use the existing converter with `--rhe` instead of `--labels-dir`:
 
 ```bash
 python preprocessing/preprocess_wayfaster.py convert \
-  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
+  --input data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5 \
   --output /tmp/opencode/rover-rhe \
   --split train --rhe --future-seconds 30 --tf-policy prefer-dynamic
 ```
@@ -187,8 +187,8 @@ For every recording, prepare a separate label file:
 
 ```text
 my_labels/
-├── flat_05ms_1_20261019_152249.csv
-└── mixed_05ms_1_20261019_153122.csv
+├── 20261019_152249_v0p5.csv
+└── 20261019_153122_v0p5.csv
 ```
 
 Each file needs **timestamp,mu,nu**:

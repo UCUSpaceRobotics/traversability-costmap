@@ -4,7 +4,7 @@ Run from the repository root. RHE is integrated into the existing converter:
 
 ```bash
 python preprocessing/preprocess_wayfaster.py convert \
-  --input data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
+  --input data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5 \
   --output /tmp/opencode/rover-rhe \
   --split train --rhe --future-seconds 30 --tf-policy prefer-dynamic
 ```
@@ -117,8 +117,8 @@ future trajectory/label support. No state or image crosses a rejected boundary.
 python -m unittest discover -s tests -v
 # Optional audit of an existing conversion, including its image-time states:
 python preprocessing/src/labels/rhe_pipeline.py audit \
-  --bag data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249 \
-  --preprocessed wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__flat_05ms_1_20261019_152249
+  --bag data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5 \
+  --preprocessed wayfaster/dataset/rover/inference/2026-10-19_ucu-cinema__20261019_152249_v0p5
 ```
 
 Tests cover known synthetic coefficients including low-excitation fits, rejection

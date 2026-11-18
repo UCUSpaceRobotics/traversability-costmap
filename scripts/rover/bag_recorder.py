@@ -5,8 +5,8 @@ Runs where the ROS 2 graph is visible (inside the rover container) with ROS 2 so
 started from the laptop by scripts/record_bag.sh, but it also works on its own:
 
     bag_recorder.py check                                         # pre-flight checks only
-    bag_recorder.py record --ride-type mixed --speed 0.5          # record until Ctrl+C
-    bag_recorder.py record --ride-type flat --speed 0.8 --index 2 --duration 5m
+    bag_recorder.py record --speed 0.5                           # record until Ctrl+C
+    bag_recorder.py record --speed 0.8 --duration 5m
     bag_recorder.py summary [BAG]                                 # message counts vs. expected (newest bag by default)
     bag_recorder.py list                                          # bags in the output directory
     bag_recorder.py path [BAG...] [--all] [--size]                # absolute paths of bags (newest by default)
@@ -116,8 +116,6 @@ class TopicSpec:
 @dataclass(frozen=True)
 class Config:
     output_dir: Path
-    ride_types: tuple[str, ...]
-    ride_types_without_speed: tuple[str, ...]
     storage: str | None
     storage_preset_profile: str | None
     max_bag_duration: int
@@ -139,7 +137,7 @@ def load_config(path: Path) -> Config:
     except (OSError, yaml.YAMLError) as e:
         raise Fail(f"Cannot read config {path}: {e}") from e
     try:
-        naming, record, checks = raw.get("naming") or {}, raw.get("record") or {}, raw.get("checks") or {}
+        record, checks = raw.get("record") or {}, raw.get("checks") or {}
         topics = {}
         for name, spec in (raw.get("topics") or {}).items():
             spec = spec or {}
@@ -157,8 +155,6 @@ def load_config(path: Path) -> Config:
             raise Fail(f"{path}: no topics configured")
         return Config(
             output_dir=Path(raw.get("output_dir", "~/bags")).expanduser(),
-            ride_types=tuple(naming.get("ride_types", [])),
-            ride_types_without_speed=tuple(naming.get("ride_types_without_speed", [])),
             storage=record.get("storage"),
             storage_preset_profile=record.get("storage_preset_profile"),
             max_bag_duration=int(record.get("max_bag_duration", 0)),
@@ -230,31 +226,19 @@ def read_metadata(bag: Path) -> dict:
 
 
 def bag_name(args: argparse.Namespace, cfg: Config) -> str:
+    """<YYYYMMDD>_<HHMMSS>_v<speed>, e.g. 20261017_162915_v0p5 (speed 0.5 m/s); no speed part without --speed."""
     if args.name:
         return args.name
     stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-    parts = [args.ride_type]
-    if args.speed is not None:
-        parts.append(f"{round(args.speed * 10):02d}ms")
-    if args.index is not None:
-        parts.append(str(args.index))
-    return "_".join(parts + [stamp])
+    if args.speed is None:
+        return stamp
+    tenths = round(args.speed * 10)
+    return f"{stamp}_v{tenths // 10}p{tenths % 10}"
 
 
 def validate_naming(args: argparse.Namespace, cfg: Config, parser: argparse.ArgumentParser) -> None:
-    if args.name:
-        return
-    if not args.ride_type:
-        parser.error("--ride-type (or --name) is required")
-    if cfg.ride_types and args.ride_type not in cfg.ride_types:
-        parser.error(f"--ride-type must be one of: {', '.join(cfg.ride_types)}")
-    if args.ride_type in cfg.ride_types_without_speed:
-        if args.speed is not None:
-            parser.error(f"--speed is not used for ride type '{args.ride_type}'")
-    elif args.speed is None:
-        parser.error(f"--speed is required for ride type '{args.ride_type}'")
-    if args.index is not None and args.index < 1:
-        parser.error("--index starts from 1")
+    if args.speed is not None and (args.speed <= 0 or abs(args.speed * 10 - round(args.speed * 10)) > 1e-6):
+        parser.error("--speed must be a positive multiple of 0.1 m/s, e.g. 0.5")
 
 
 # --- Running recording (pid file) ----------------------------------------------
@@ -718,10 +702,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_check)
 
     p = sub.add_parser("record", parents=[common, topics], help="check, record, monitor and summarise a bag")
-    p.add_argument("--ride-type", help="ride type, first part of the bag name (see naming.ride_types)")
-    p.add_argument("--speed", type=float, help="max speed in m/s (joystick fully forward), e.g. 0.5")
-    p.add_argument("--index", type=int, help="number of a repeated ride with the same type and speed (1, 2, ...)")
-    p.add_argument("--name", help="full bag name instead of --ride-type/--speed/--index")
+    p.add_argument("--speed", type=float,
+                   help="max speed in m/s (joystick fully forward), e.g. 0.5; goes into the bag name as v0p5. "
+                        "Leave it out for setup tests")
+    p.add_argument("--name", help="full bag name instead of the generated <YYYYMMDD>_<HHMMSS>_v<speed>")
     p.add_argument("--duration", type=parse_duration, metavar="TIME",
                    help="stop automatically after TIME (300, 90s, 5m, 1h30m); default: until Ctrl+C")
     p.add_argument("--monitor-interval", type=float, metavar="SEC",

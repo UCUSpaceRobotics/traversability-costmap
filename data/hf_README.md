@@ -55,7 +55,7 @@ Recordings are grouped into **sessions**. One session is one recording day at on
             └── <bag>_0.mcap
 ```
 
-Bag names follow `<ride_type>_<speed>[_<index>]_<YYYYMMDD>_<HHMMSS>`, for example `mixed_05ms_2_20261019_160254` is the second `mixed` ride at a maximum of 0.5 m/s, started at 16:02:54 UTC. The ride types, the full naming convention and the train / val split of each bag are described in [data/README.md](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/README.md) and [data/manifest.csv](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/manifest.csv) on GitHub.
+Bag names follow `<YYYYMMDD>_<HHMMSS>_v<speed>`, for example `20261019_160254_v0p5` was started on 2026-10-19 at 16:02:54 UTC with the maximum speed set to 0.5 m/s (`v1p0` = 1.0 m/s). Setup tests have no speed part. The ride type, the full naming convention and the train / val split of each bag are described in [data/README.md](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/README.md) and [data/manifest.csv](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/manifest.csv) on GitHub.
 
 ## Download
 
@@ -76,7 +76,7 @@ The bags can be opened with [rosbags](https://pypi.org/project/rosbags/) without
 from pathlib import Path
 from rosbags.highlevel import AnyReader
 
-with AnyReader([Path("data/raw/2026-10-19_ucu-cinema/flat_05ms_1_20261019_152249")]) as reader:
+with AnyReader([Path("data/raw/2026-10-19_ucu-cinema/20261019_152249_v0p5")]) as reader:
     conns = [c for c in reader.connections if c.topic == "/rover/zed2i/imu/data"]
     for conn, t, raw in reader.messages(connections=conns):
         msg = reader.deserialize(raw, conn.msgtype)

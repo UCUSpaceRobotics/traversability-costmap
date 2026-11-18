@@ -21,7 +21,7 @@ Each bag report contains:
 Usage examples (run from anywhere inside the repo):
     python scripts/generate_bags_report.py                                        # all bags
     python scripts/generate_bags_report.py --session 2026-10-17_ucu-cinema         # one session
-    python scripts/generate_bags_report.py --bag flat_05ms_20261017_162915         # one bag (by name)
+    python scripts/generate_bags_report.py --bag 20261017_162915_v0p5         # one bag (by name)
     python scripts/generate_bags_report.py --bag data/raw/<session>/<bag>          # one bag (by path)
     python scripts/generate_bags_report.py --skip-existing --jobs 4                # only new bags, in parallel
 
@@ -544,8 +544,8 @@ def analyze(bag: BagRef, raw: dict, manifest_row: dict | None) -> dict:
         if o["jumps"]:
             checks.append(Check("warn", f"Pose jumps in {n}",
                                 f"{o['jumps']} steps faster than {MAX_PLAUSIBLE_SPEED} m/s"))
-    m = re.search(r"_(\d{2})ms_", bag.name)
-    max_speed = int(m.group(1)) / 10 if m else None
+    m = re.search(r"_v(\d+)p(\d+)$", bag.name)  # <YYYYMMDD>_<HHMMSS>_v0p5 -> 0.5 m/s
+    max_speed = float(f"{m.group(1)}.{m.group(2)}") if m else None
     for n, o in odom.items():
         rate = timing[n].get("median_rate_hz", 10)
         smooth = rolling(o["speed"], max(int(rate * 0.5), 2), np.median)  # twist is noisy, use 0.5 s median
