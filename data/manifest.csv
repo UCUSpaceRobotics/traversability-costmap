@@ -1,10 +1,10 @@
 bag,session,terrain,max_speed_ms,duration_s,size_mb,split,notes
 20261017_162047,2026-10-17_ucu-cinema,ground,,29,31,exclude,setup check
-20261017_162915_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,178,196,train,
+20261017_162915_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,178,196,train,startup gap at 0.9 s; ZED topics start 8.7 s late (trim start)
 20261017_163716_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,299,395,train,
-20261017_164442_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,239,296,train,
+20261017_164442_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,239,296,train,startup gap at 2.2 s (trim start)
 20261017_164938_v0p5,2026-10-17_ucu-cinema,ground;stones,0.5,239,316,train,
-20261017_170424_v0p3,2026-10-17_ucu-cinema,ground;stones,0.3,199,272,train,
+20261017_170424_v0p3,2026-10-17_ucu-cinema,ground;stones,0.3,199,272,train,/rover/joint_states missing; ZED topics start 2.1 s late (trim start)
 20261017_171002_v0p8,2026-10-17_ucu-cinema,ground;stones,0.8,199,250,train,
 20261019_143330,2026-10-19_ucu-cinema,ground,,219,373,exclude,setup check
 20261019_152249_v0p5,2026-10-19_ucu-cinema,ground,0.5,298,510,train,
