@@ -778,7 +778,7 @@ def plot_speed(a: dict) -> str:
     rows = len(odom) + 3  # one per source, comparison, difference to reference, yaw rate
     fig, axes = plt.subplots(rows, 1, figsize=(11, 1.9 * rows), sharex=True, squeeze=False)
     axes = axes[:, 0]
-    top = max([a["max_speed"] or 0] + [np.nanpercentile(s, 99.5) for s in smooth.values() if np.isfinite(s).any()])
+    top = max([a["max_speed"] or 0] + [np.nanpercentile(s, 99.9) for s in smooth.values() if np.isfinite(s).any()])
     top = top * 1.25 + 0.05
 
     def decorate(ax):
@@ -819,7 +819,7 @@ def plot_speed(a: dict) -> str:
         diff = np.interp(ref["t"], o["t"], smooth[n], left=np.nan, right=np.nan) - smooth[ref_n]
         ax.plot(ref["t"], diff, color=SERIES[k % 8], lw=1.2, label=f"{short(n)} − {short(ref_n)}")
         if np.isfinite(diff).any():
-            lim.append(np.nanpercentile(np.abs(diff), 99.5))
+            lim.append(np.nanpercentile(np.abs(diff), 99.9))
     ax.set_ylim(-max(lim) * 1.2, max(lim) * 1.2)
     ax.set_ylabel("Δ|v| [m/s]")
     ax.set_title(f"Speed difference to {short(ref_n)} (0.5 s median; < 0 = slower than the wheels)",
@@ -855,12 +855,22 @@ def plot_paths(a: dict) -> str:
         if f.any():
             ax.plot(o["x"][f][-1], o["y"][f][-1], "o", color=c, ms=7, mec="white", mew=1.5)
     ax.plot(0, 0, "s", color=INK, ms=7, mec="white", mew=1.5, label="start")
-    # axis limits from sources without pose jumps, so a broken source does not hide the others
+    # axis limits from sources without pose jumps, so a broken source does not hide the others; a source
+    # with pose jumps still widens them (robust 1-99 % range), but by at most one path span per side, so a
+    # plausible-looking path is not cut off while a diverged one (kilometres away) cannot blow up the axes
     xs = np.concatenate([o["x"] for o in clean] + [[0]])
     ys = np.concatenate([o["y"] for o in clean] + [[0]])
-    pad = 0.05 * max(np.nanmax(xs) - np.nanmin(xs), np.nanmax(ys) - np.nanmin(ys), 1)
-    ax.set_xlim(np.nanmin(xs) - pad, np.nanmax(xs) + pad)
-    ax.set_ylim(np.nanmin(ys) - pad, np.nanmax(ys) + pad)
+    x0, x1, y0, y1 = np.nanmin(xs), np.nanmax(xs), np.nanmin(ys), np.nanmax(ys)
+    span = max(x1 - x0, y1 - y0, 1)
+    for o in a["odom"].values():
+        if any(o is c for c in clean) or not np.isfinite(o["x"]).any():
+            continue
+        bx, by = np.nanpercentile(o["x"], [1, 99]), np.nanpercentile(o["y"], [1, 99])
+        x0, x1 = min(x0, max(bx[0], x0 - span)), max(x1, min(bx[1], x1 + span))
+        y0, y1 = min(y0, max(by[0], y0 - span)), max(y1, min(by[1], y1 + span))
+    pad = 0.05 * max(x1 - x0, y1 - y0, 1)
+    ax.set_xlim(x0 - pad, x1 + pad)
+    ax.set_ylim(y0 - pad, y1 + pad)
     ax.set_aspect("equal", adjustable="box")
     ax.set_xlabel("x [m] (start heading)")
     ax.set_ylabel("y [m]")
@@ -897,7 +907,7 @@ def plot_odom_distances(a: dict) -> str:
                      loc="left", fontsize=9)
     # cumulative travelled distance of each source
     ax = axes[-1]
-    top = []
+    top, jumpy = [], []
     for n, o in items:
         step = np.hypot(np.diff(o["x"]), np.diff(o["y"]))
         cum = np.concatenate([[0], np.nancumsum(step)])
@@ -905,7 +915,11 @@ def plot_odom_distances(a: dict) -> str:
                 label=f"{short(n)} ({cum[-1]:.1f} m)")
         if not o["jumps"]:
             top.append(cum[-1])
+        else:
+            jumpy.append(cum[-1])
     if top:
+        # a source with pose jumps counts only if its length is plausible (<= 1.5x the longest clean one)
+        top += [c for c in jumpy if c <= 1.5 * max(top)]
         ax.set_ylim(0, max(top) * 1.2 + 0.1)
     ax.set_ylabel("travelled [m]")
     ax.set_title("Cumulative travelled distance" + (" (axis scaled to sources without pose jumps)"
