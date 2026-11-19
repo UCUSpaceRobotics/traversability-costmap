@@ -17,7 +17,6 @@ Dataset on Hugging Face: [ucu-space-robotics/traversability-costmap](https://hug
 - [Adding a session](#adding-a-session)
 - [Directory structure](#directory-structure)
   - [Hugging Face repo](#hugging-face-repo)
-- [Ride types](#ride-types)
 - [Bag naming](#bag-naming)
 
 
@@ -57,13 +56,12 @@ Bags are not stored in git. Use [scripts/sync_data.py](../scripts/sync_data.py) 
 python scripts/sync_data.py download                                  # all train + val bags
 python scripts/sync_data.py download --split val                      # only validation bags
 python scripts/sync_data.py download --session 2026-10-17_ucu-cinema  # one session
-python scripts/sync_data.py download --ride-type mixed                # one ride type
 python scripts/sync_data.py download --bag 20261017_162915_v0p5  # one bag
 python scripts/sync_data.py download --revision v0.1                  # pinned dataset version
 python scripts/sync_data.py download --dry-run                        # list only, no download
 ```
 
-Filters can be repeated and combined. Bags with `split=exclude`, such as `test` rides, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped.
+Filters can be repeated and combined. Bags with `split=exclude`, such as setup tests, are skipped unless you pass `--include-excluded` or name them with `--bag`. Bags that are already downloaded are skipped.
 
 #### Without the script
 
@@ -165,15 +163,14 @@ python scripts/generate_bags_report.py --session 2026-10-20_ucu-cinema
 | Column | Value |
 |---|---|
 | `bag`, `session` | bag folder name and session folder name |
-| `ride_type` | one of the [ride types](#ride-types) |
-| `terrain` | `;`-separated terrain in the ride: `ground`, `bumps`, `stones`, `stony_area` |
+| `terrain` | `;`-separated terrain in the ride: `ground`, `bumps`, `stones`, `stony_area`, `asphalt`, `leaves` |
 | `max_speed_ms` | max speed in m/s, e.g. `0.5`; empty for `test` bags |
 | `duration_s` | duration in seconds, rounded (`ros2 bag info <bag>` or `duration` in `metadata.yaml`, in ns) |
 | `size_mb` | size of the `.mcap` in MB (`du -m <bag>/*.mcap`) |
 | `split` | `train`, `val` or `exclude` (`test` bags and bags you should not train on) |
 | `notes` | optional, short |
 
-**4. Update the docs if needed.** For a new ride type, add it to [Ride types](#ride-types). If the recorded topics changed, also update the topic table in [hf_README.md](hf_README.md) and upload it (see [Hugging Face repo](#hugging-face-repo)).
+**4. Update the docs if needed.** If the recorded topics changed, also update the topic table in [hf_README.md](hf_README.md) and upload it (see [Hugging Face repo](#hugging-face-repo)).
 
 **5. Upload the session to Hugging Face.** This uploads the bags and the YAML files in one commit:
 
@@ -197,7 +194,7 @@ git commit -m "chore(data): add session 2026-10-20_ucu-cinema"
 data/
 ├── README.md
 ├── hf_README.md                  # dataset card of the Hugging Face repo (uploaded there as README.md)
-├── manifest.csv                  # one row per bag: session, ride type, terrain, speed, duration, size, split
+├── manifest.csv                  # one row per bag: session, terrain, speed, duration, size, split
 └── raw/
     └── <session>/                # e.g. 2026-10-17_ucu-cinema  (<YYYY-MM-DD>_<location>)
         ├── session.yaml          # date, location, lighting, surface description, notes
@@ -234,17 +231,6 @@ The dataset card is kept in [hf_README.md](hf_README.md). After you change it, u
 hf upload ucu-space-robotics/traversability-costmap data/hf_README.md README.md --repo-type dataset
 ```
 
-## Ride types
-
-The ride type is not part of the bag name, because it is not always known when the recording starts. It is set after the ride, in the `ride_type` column of [manifest.csv](manifest.csv).
-
-| Ride type      | Description |
-|----------------|-------------|
-| `test`         | Setup check. Never used for training or validation. |
-| `flat`         | Mostly flat surface with small bumps and stones. |
-| `singlestones` | Flat surface. The rover deliberately drives over and next to single stones. |
-| `mixed`        | All terrain types: flat with bumps, single stones and passes through the stony area from different angles. |
-
 ## Bag naming
 
 ```
@@ -259,7 +245,7 @@ The ride type is not part of the bag name, because it is not always known when t
 
 \* Setup test bags are recorded without `--speed` and have no speed part, e.g. `20261017_162047`.
 
-Bags sort by recording time. The date and time make the name unique, so there is no index. The ride type, terrain and the rest are in [manifest.csv](manifest.csv).
+Bags sort by recording time. The date and time make the name unique, so there is no index. The terrain, speed and the rest are in [manifest.csv](manifest.csv).
 
 Examples:
 - `20261017_162915_v0p5`: recorded 2026-10-17 at 16:29:15 with the max speed set to 0.5 m/s

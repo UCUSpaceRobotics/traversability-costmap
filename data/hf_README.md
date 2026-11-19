@@ -55,11 +55,11 @@ Recordings are grouped into **sessions**. One session is one recording day at on
             └── <bag>_0.mcap
 ```
 
-Bag names follow `<YYYYMMDD>_<HHMMSS>_v<speed>`, for example `20261019_160254_v0p5` was started on 2026-10-19 at 16:02:54 UTC with the maximum speed set to 0.5 m/s (`v1p0` = 1.0 m/s). Setup tests have no speed part. The ride type, the full naming convention and the train / val split of each bag are described in [data/README.md](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/README.md) and [data/manifest.csv](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/manifest.csv) on GitHub.
+Bag names follow `<YYYYMMDD>_<HHMMSS>_v<speed>`, for example `20261019_160254_v0p5` was started on 2026-10-19 at 16:02:54 UTC with the maximum speed set to 0.5 m/s (`v1p0` = 1.0 m/s). Setup tests have no speed part. The full naming convention and the train / val split of each bag are described in [data/README.md](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/README.md) and [data/manifest.csv](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/data/manifest.csv) on GitHub.
 
 ## Download
 
-With the code repo, use [scripts/sync_data.py](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/scripts/sync_data.py). It selects bags by split, session or ride type from the manifest.
+With the code repo, use [scripts/sync_data.py](https://github.com/UCUSpaceRobotics/traversability-costmap/blob/main/scripts/sync_data.py). It selects bags by split or session from the manifest.
 
 Without it, use the `hf` CLI:
 

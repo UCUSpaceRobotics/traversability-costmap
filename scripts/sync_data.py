@@ -6,7 +6,7 @@ Bags are selected from data/manifest.csv. The first argument is required:
   upload    send the selected bags from data/raw/ to the Hub (one commit)
   delete    delete the local .mcap files of the selected bags (the git-ignored part); metadata.yaml,
             session.yaml and the Hub are not touched. Bags with split=exclude are included.
-            Needs a filter (--bag / --session / --split / --ride-type) or --all; asks for confirmation (--yes skips it)
+            Needs a filter (--bag / --session / --split) or --all; asks for confirmation (--yes skips it)
 The Hugging Face dataset repo has the same layout as data/: raw/<session>/<bag>/.
 Only .mcap files are downloaded: metadata.yaml and session.yaml are tracked in git
 Files that are already downloaded are skipped.
@@ -19,7 +19,6 @@ Usage examples (run from anywhere inside the repo):
     python scripts/sync_data.py download                                         # all train + val bags
     python scripts/sync_data.py download --split val                             # only validation bags
     python scripts/sync_data.py download --session 2026-10-17_ucu-cinema
-    python scripts/sync_data.py download --ride-type stonepath --ride-type flat
     python scripts/sync_data.py download --bag 20261017_162915_v0p5
     python scripts/sync_data.py download --revision v0.1                          # exact dataset version
     python scripts/sync_data.py download --dry-run                                # show which files would be downloaded/skipped
@@ -59,7 +58,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("mode", choices=["download", "upload", "delete"], help="download from the Hub, upload to it, or delete local .mcap files")
     p.add_argument("--split", action="append", help="train / val (repeatable)")
     p.add_argument("--session", action="append", help="session folder name (repeatable)")
-    p.add_argument("--ride-type", action="append", help="ride type, e.g. stonepath (repeatable)")
     p.add_argument("--bag", action="append", help="exact bag name (repeatable)")
     p.add_argument("--commit-message", help="commit message for upload")
     p.add_argument("--revision", default=DEFAULT_REVISION, help=f"dataset tag/branch/commit (default: {DEFAULT_REVISION})")
@@ -83,7 +81,6 @@ def select_bags(args: argparse.Namespace) -> list[dict]:
         return (
             (not args.split or r["split"] in args.split)
             and (not args.session or r["session"] in args.session)
-            and (not args.ride_type or r["ride_type"] in args.ride_type)
             and (not args.bag or r["bag"] in args.bag)
         )
 
@@ -262,8 +259,8 @@ def delete_local(rows: list[dict], args: argparse.Namespace) -> None:
 
 def main() -> None:
     args = parse_args()
-    if args.mode == "delete" and not (args.all or args.bag or args.session or args.split or args.ride_type):
-        sys.exit("delete needs a filter (--bag / --session / --split / --ride-type) or --all.")
+    if args.mode == "delete" and not (args.all or args.bag or args.session or args.split):
+        sys.exit("delete needs a filter (--bag / --session / --split) or --all.")
     rows = select_bags(args)
     if not rows:
         sys.exit("No bags match the given filters.")
