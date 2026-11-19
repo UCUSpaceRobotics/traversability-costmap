@@ -27,11 +27,11 @@ bag,session,terrain,max_speed_ms,duration_s,size_mb,split,notes
 20261115_140803_v0p8,2026-11-15_stryiskiy-park-raw,leaves,0.8,434,1021,exclude,raw cmd_vel (not clamped)
 20261115_125625_v1p0,2026-11-15_stryiskiy-park-raw,ground;asphalt;leaves,1.0,295,679,exclude,same as the train bag; pose jumps in /rover/odom
 20261115_131245_v1p0,2026-11-15_stryiskiy-park-raw,ground;asphalt;leaves,1.0,356,837,exclude,same as the train bag
-19700101_002852_v1p0,2026-11-19_stryiskiy-park,grass,1.0,113,268,exclude,/rover/odom exceeds the 1.0 speed cap (median 1.37 m/s); ZED odometry path 23% shorter than wheels
-19700101_004817_v1p0,2026-11-19_stryiskiy-park,leaves;grass,1.0,202,514,train,startup gap at 1.4 s (trim start); pose jumps in /rover/odom
-19700101_005306_v0p5,2026-11-19_stryiskiy-park,leaves;grass,0.5,306,788,train,startup gap at 2.3 s (trim start)
-19700101_005939_v0p5,2026-11-19_stryiskiy-park,leaves;grass,0.5,157,417,train,
-19700101_010436_v0p8,2026-11-19_stryiskiy-park,asphalt,0.8,118,283,train,
-19700101_012924_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,141,310,exclude,startup gap at 2.3 s; wheels odom and joint_states start 2.8 s late (trim start); 78 pose jumps in ZED odom
-19700101_013211_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,189,409,train,ZED topics start 2.6 s late (trim start)
-19700101_015104_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,354,805,train,pose jumps in /rover/odom
+20261119_132000_v1p0,2026-11-19_stryiskiy-park,grass,1.0,113,268,exclude,/rover/odom exceeds the 1.0 speed cap (median 1.37 m/s); ZED odometry path 23% shorter than wheels
+20261119_133925_v1p0,2026-11-19_stryiskiy-park,leaves;grass,1.0,202,514,train,startup gap at 1.4 s (trim start); pose jumps in /rover/odom
+20261119_134414_v0p5,2026-11-19_stryiskiy-park,leaves;grass,0.5,306,788,train,startup gap at 2.3 s (trim start)
+20261119_135047_v0p5,2026-11-19_stryiskiy-park,leaves;grass,0.5,157,417,train,
+20261119_135544_v0p8,2026-11-19_stryiskiy-park,asphalt,0.8,118,283,train,
+20261119_142032_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,141,310,exclude,startup gap at 2.3 s; wheels odom and joint_states start 2.8 s late (trim start); 78 pose jumps in ZED odom
+20261119_142319_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,189,409,train,ZED topics start 2.6 s late (trim start)
+20261119_144212_v1p0,2026-11-19_stryiskiy-park,asphalt,1.0,354,805,train,pose jumps in /rover/odom

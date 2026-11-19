@@ -8,3 +8,4 @@ zed_config: zed2i_record.yaml
 notes: |
   - Most bags have a short gap or late-starting topics in the first ~3 s of the recording, so they may need trimming at the start.
   - Several bags have pose jumps in /rover/odom, and in some bags the ZED odometry path is much shorter than the wheel odometry path. Check the odometry before using it for labels.
+  - The recorder clock was not set, so the bags were first named 19700101_*. They were renamed to 20261119_* using the start time of the first bag (13:20:00 local time, set by hand); the other bags are offset from it by the original name differences. Times are approximate.
