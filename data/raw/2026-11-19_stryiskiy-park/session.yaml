@@ -7,3 +7,4 @@ rover_code_commit: https://github.com/UCUSpaceRobotics/indomitus-rover-core/comm
 zed_config: zed2i_record.yaml
 notes: |
   - Most bags have a short gap or late-starting topics in the first ~3 s of the recording, so they may need trimming at the start.
+  - Several bags have pose jumps in /rover/odom, and in some bags the ZED odometry path is much shorter than the wheel odometry path. Check the odometry before using it for labels.

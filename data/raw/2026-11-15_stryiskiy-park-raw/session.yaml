@@ -9,5 +9,6 @@ notes: |
   - Raw recordings, nothing was changed after recording.
   - 08ms bags: max_linear_speed was set to 0.8 in controllers.yaml (the only change in the commit above), but the gamepad scale stayed 1.0. The controller limits the requested speed to 0.8, but /rover/cmd_vel still reaches 1.0 and does not match the real speed (about 0.8). The limited command is not recorded.
   - 10ms bags: max_linear_speed was 1.0, so /rover/cmd_vel matches the speed limit. Only turning commands go up to 3% over it.
-  - 20261115_133726_v0p8 (excluded in the manifest.csv): the speed command changes often (about 41 changes per minute, roughly 27% of the moving time is within 2 s of a change), so the controller smoothing, which is not accounted for in cmd_vel, affects the real speed more than in the other bags.
   - because of the incorrectly recorded control commands all bags from this run are excluded in the manifest.csv.
+  - Some bags have short gaps or late-starting topics in the first ~3 s of the recording, so they may need trimming at the start.
+  - Several bags have pose jumps in /rover/odom, and in some bags the ZED odometry path is much shorter than the wheel odometry path. Check the odometry before using it for labels.
