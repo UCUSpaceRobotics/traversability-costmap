@@ -1,0 +1,9 @@
+date: 2026-11-19
+location: Stryiskyi Park
+environment: outdoor
+lighting: sunny, clear sky
+surface: asphalt roads in Stryiskyi Park; areas with low grass and leaves
+rover_code_commit: https://github.com/UCUSpaceRobotics/indomitus-rover-core/commit/f765b007752b7b94756ffdf376fb5d1ad4c05d0b
+zed_config: zed2i_record.yaml
+notes: |
+  - Most bags have a short gap or late-starting topics in the first ~3 s of the recording, so they may need trimming at the start.
